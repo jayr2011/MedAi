@@ -12,7 +12,7 @@ class DatabricksService:
                 "Content-Type": "application/json"
             },
             timeout=300.0,
-            verify=False
+            verify=not settings.debug
         )
         self.endpoint_url = settings.databricks_url
 

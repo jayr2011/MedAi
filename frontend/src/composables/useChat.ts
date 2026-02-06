@@ -34,7 +34,6 @@ export function useChat() {
             ...messages.value
               .filter(m => m.content)
               .map(m => ({ role: m.role, content: m.content })),
-            { role: 'user', content: text }
           ]
         })
       })
