@@ -9,3 +9,11 @@
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+link[rel="icon"] {
+  border-radius: 50%;
+}
+
+link[rel="apple-touch-icon"] {
+  border-radius: 25%;
+}

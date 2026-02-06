@@ -1,17 +1,16 @@
 <template>
   <div class="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-    <header class="shrink-0 bg-emerald-600 dark:bg-gray-800 text-white px-4 py-3 shadow-md">
-      <div class="flex items-center justify-between max-w-2xl mx-auto">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-            <span class="text-lg font-bold">M</span>
-          </div>
-          <div>
-            <h1 class="font-semibold text-base leading-tight">MedIA</h1>
-            <p class="text-xs text-emerald-100 dark:text-gray-400">
-              {{ isLoading ? 'Digitando...' : 'Assistente médico' }}
-            </p>
-          </div>
+    <header class="shrink-0 bg-emerald-600 dark:bg-gray-800 text-white px-4 py-3 shadow-md h-14">
+      <div class="flex items-center justify-between max-w-2xl mx-auto h-full">
+        <div class="flex items-center gap-3 h-full">
+          <img
+            src="@/assets/medai_trans.png"
+            alt="MedIA"
+            class="h-26 invert brightness-0 dark:invert"
+          />
+          <p class="text-xs text-emerald-100 dark:text-gray-400">
+            {{ isLoading ? 'Digitando...' : 'Assistente médico' }}
+          </p>
         </div>
 
         <div class="flex items-center gap-2">
@@ -23,7 +22,7 @@
             title="Limpar conversa"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
               <line x1="10" y1="11" x2="10" y2="17" />
               <line x1="14" y1="11" x2="14" y2="17" />
