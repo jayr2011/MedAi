@@ -14,13 +14,31 @@
           </div>
         </div>
 
-        <button
-          @click="toggle"
-          class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-        >
-          <span v-if="isDark" class="text-lg">☀️</span>
-          <span v-else class="text-lg">🌙</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <!-- Limpar conversa -->
+          <button
+            @click="handleClear"
+            :disabled="messages.length === 0"
+            class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Limpar conversa"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <line x1="10" y1="11" x2="10" y2="17" />
+              <line x1="14" y1="11" x2="14" y2="17" />
+            </svg>
+          </button>
+
+          <!-- Dark mode -->
+          <button
+            @click="toggle"
+            class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+          >
+            <span v-if="isDark" class="text-lg">☀️</span>
+            <span v-else class="text-lg">🌙</span>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -28,12 +46,12 @@
       <div class="max-w-2xl mx-auto px-4 py-4 space-y-4">
         <!-- Welcome -->
         <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-            <span class="text-2xl drop-shadow-md">🩺</span>
-          </div>
-          <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200">Olá! Eu sou a MedIA</h2>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xs">
-            Sua assistente médica virtual. Como posso te ajudar hoje?
-          </p>
+          <span class="text-2xl drop-shadow-md">🩺</span>
+        </div>
+        <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200">Olá! Eu sou a MedIA</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xs">
+          Sua assistente médica virtual. Como posso te ajudar hoje?
+        </p>
 
         <ChatBubble
           v-for="msg in messages"
@@ -74,13 +92,19 @@ import ChatInput from '@/components/ChatInput.vue'
 import { useChat } from '../composables/useChat'
 import { useDarkMode } from '../composables/useDark'
 
-const { messages, isLoading, sendMessage } = useChat()
+const { messages, isLoading, sendMessage, clearMessages } = useChat()
 const { isDark, toggle } = useDarkMode()
 const scrollContainer = ref<HTMLElement>()
 const showScrollBtn = ref(false)
 
 function handleSend(text: string) {
   sendMessage(text)
+}
+
+function handleClear() {
+  if (confirm('Tem certeza que deseja limpar a conversa?')) {
+    clearMessages()
+  }
 }
 
 function handleScroll() {
