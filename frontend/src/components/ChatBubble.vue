@@ -21,7 +21,11 @@
         <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
       </div>
 
-      <div v-else v-html="formattedContent" class="prose prose-sm dark:prose-invert max-w-none" />
+      <div
+        v-else
+        v-html="formattedContent"
+        class="prose prose-sm dark:prose-invert max-w-none wrap-anywhere prose-a:block prose-a:max-w-full prose-a:truncate sm:prose-a:inline sm:prose-a:break-all sm:prose-a:wrap-anywhere sm:prose-a:whitespace-normal sm:prose-a:overflow-visible sm:prose-a:text-clip"
+      />
 
       <span
         class="block text-[10px] mt-1.5 opacity-60"
