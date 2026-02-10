@@ -1,7 +1,12 @@
 <template>
-  <form @submit.prevent="handleSubmit" class="flex items-end gap-2">
+  <form @submit.prevent="handleSubmit" class="flex items-end gap-2" role="search">
+    <label for="chat-input" class="sr-only">Mensagem</label>
+    <span id="chat-input-hint" class="sr-only">
+      Pressione Enter para enviar. Use Shift mais Enter para nova linha.
+    </span>
     <textarea
       ref="inputRef"
+      id="chat-input"
       v-model="text"
       @keydown.enter.exact.prevent="handleSubmit"
       placeholder="Digite sua mensagem..."
@@ -13,6 +18,8 @@
              focus:ring-emerald-500 focus:border-transparent
              max-h-32 overflow-y-auto transition-all scrollbar-none"
       :disabled="disabled"
+      aria-describedby="chat-input-hint"
+      aria-label="Mensagem"
     />
     <button
       type="submit"
@@ -20,6 +27,8 @@
       class="shrink-0 w-11 h-11 rounded-full bg-emerald-500 text-white flex items-center
              justify-center transition-all hover:bg-emerald-600 active:scale-95
              disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+      aria-label="Enviar mensagem"
+      :aria-disabled="!text.trim() || disabled"
     >
       <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
         <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />

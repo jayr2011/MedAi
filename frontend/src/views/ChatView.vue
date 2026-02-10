@@ -8,7 +8,7 @@
             alt="MedIA"
             class="h-26 invert brightness-0 dark:invert"
           />
-          <p class="text-xs text-emerald-100 dark:text-gray-400">
+          <p class="text-xs text-emerald-100 dark:text-gray-400" aria-live="polite" aria-atomic="true">
             {{ isLoading ? 'Digitando...' : 'Assistente médico' }}
           </p>
         </div>
@@ -20,6 +20,7 @@
             :disabled="messages.length === 0"
             class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             title="Limpar conversa"
+            aria-label="Limpar conversa"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -33,6 +34,8 @@
           <button
             @click="toggle"
             class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+            :aria-pressed="isDark"
+            aria-label="Alternar tema"
           >
             <span v-if="isDark" class="text-lg">☀️</span>
             <span v-else class="text-lg">🌙</span>
@@ -41,10 +44,24 @@
       </div>
     </header>
 
-    <div ref="scrollContainer" class="flex-1 overflow-y-auto relative" @scroll="handleScroll">
-      <div class="max-w-2xl mx-auto px-4 py-4 space-y-4">
+    <div
+      ref="scrollContainer"
+      class="flex-1 overflow-y-auto relative"
+      @scroll="handleScroll"
+      role="main"
+      aria-label="Conversa"
+    >
+      <div
+        class="max-w-2xl mx-auto px-4 py-4 space-y-4"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions text"
+      >
         <!-- Welcome -->
-        <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+        <div
+          class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4"
+          aria-hidden="true"
+        >
           <span class="text-2xl drop-shadow-md">🩺</span>
         </div>
         <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200">Olá! Eu sou a MedIA</h2>
@@ -67,6 +84,7 @@
           class="sticky bottom-4 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full
                  bg-emerald-500 text-white shadow-lg flex items-center justify-center
                  hover:bg-emerald-600 active:scale-95 transition-all"
+          aria-label="Ir para a ultima mensagem"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

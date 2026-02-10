@@ -1,8 +1,15 @@
 <template>
-  <div class="flex" :class="isUser ? 'justify-end' : 'justify-start'">
+  <div
+    class="flex"
+    :class="isUser ? 'justify-end' : 'justify-start'"
+    role="article"
+    :aria-label="isUser ? 'Mensagem do usuario' : 'Mensagem do assistente'"
+    :aria-busy="!isUser && !message.content && loading"
+  >
     <div
       v-if="!isUser"
       class="shrink-0 w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center mr-2 mt-1"
+      aria-hidden="true"
     >
       <span class="text-white text-xs font-bold">M</span>
     </div>
@@ -15,7 +22,13 @@
           : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 shadow-sm border border-gray-100 dark:border-gray-700 rounded-bl-sm'
       "
     >
-      <div v-if="!isUser && !message.content && loading" class="flex gap-1.5 py-1 px-1">
+      <div
+        v-if="!isUser && !message.content && loading"
+        class="flex gap-1.5 py-1 px-1"
+        role="status"
+        aria-live="polite"
+        aria-label="Assistente esta digitando"
+      >
         <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
         <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
         <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
@@ -27,12 +40,13 @@
         class="prose prose-sm dark:prose-invert max-w-none wrap-anywhere prose-a:block prose-a:max-w-full prose-a:truncate sm:prose-a:inline sm:prose-a:break-all sm:prose-a:wrap-anywhere sm:prose-a:whitespace-normal sm:prose-a:overflow-visible sm:prose-a:text-clip"
       />
 
-      <span
+      <time
         class="block text-[10px] mt-1.5 opacity-60"
         :class="isUser ? 'text-right text-emerald-100' : 'text-gray-400 dark:text-gray-500'"
+        :datetime="message.timestamp.toISOString()"
       >
         {{ formattedTime }}
-      </span>
+      </time>
     </div>
   </div>
 </template>
