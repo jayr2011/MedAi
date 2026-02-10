@@ -1,13 +1,11 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from app.api.v1.schemas.chat import ChatRequest, ChatMessage
+from app.api.v1.schemas.chat import ChatRequest
 from app.services.databricks_service import DatabricksService
-from app.services.rag_service import buscar_contexto
 from app.api.deps import get_databricks_service
-from app.services.web_search_service import web_search, deve_pesquisar_web
 
-logger = logging.getLogger(__name__) 
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -20,55 +18,24 @@ async def chat_stream(
         ultima_msg = next(
             (m.content for m in reversed(request.messages) if m.role == "user"), ""
         )
-
-        contexto_rag = buscar_contexto(ultima_msg)
-
-        contexto_web = ""
-
-        precisa_web = deve_pesquisar_web(ultima_msg)
-
-        from app.services.web_search_service import MIN_FALLBACK_LENGTH
-
-        perform_web = bool(precisa_web or (not contexto_rag and len(ultima_msg) > MIN_FALLBACK_LENGTH))
-        logger.info(
-            "Decisão web_search: %s (precisa_semantic=%s, contexto_rag_present=%s, len_msg=%d)",
-            perform_web,
-            precisa_web,
-            bool(contexto_rag),
-            len(ultima_msg),
-        )
-
-        if perform_web:
-            contexto_web = web_search(ultima_msg)
-
-        system_instructions = "Você é a MedIA. responda sempre em português brasileiro. sempre indique entre 3 a 5 possiveis causas para os sintomas apresentados. indique exames complementares para confirmar o diagnóstico."
-
-        if contexto_rag:
-            system_instructions += f"\n\nCONTEXTO DOS LIVROS:\n{contexto_rag}\n"
-
-        if contexto_web:
-            system_instructions += f"\n\nRESULTADOS DA WEB (Complementar):\n{contexto_web}\nCite a fonte (link) se usar a web."
-
-        if not contexto_rag and not contexto_web:
-            system_instructions += "Responda com seu conhecimento base."
         
-        system_instructions += "\n\nSe não souber a resposta, diga que não sabe."
+        historico = [
+            m for m in request.messages 
+            if m.content != ultima_msg and m.role != "system"
+        ]
 
-        messages = list(request.messages)
-        
-        messages = [m for m in messages if m.role != "system"]
-
-        msg_system = ChatMessage(role="system", content=system_instructions)
-        messages.insert(0, msg_system)
+        import json
 
         async def generate():
-            async for chunk in service.chat_stream(messages):
-                yield f"data: {chunk}\n\n"
+            async for chunk in service.chat_stream(ultima_msg, historico):
+                payload = json.dumps({"choices": [{"delta": {"content": chunk}}]})
+                yield f"data: {payload}\n\n"
 
         return StreamingResponse(
             generate(),
             media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache"}
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Databricks error: {str(e)}")
+        logger.error(f"Erro na rota de chat: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")

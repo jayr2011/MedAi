@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 class ChatMessage(BaseModel):
     role: str
@@ -7,3 +7,4 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
+    history: Optional[List[ChatMessage]] = []
