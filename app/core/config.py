@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     max_tokens: Optional[int] = None
     debug: bool = True
 
-    router_threshold: float = 0.6
+    router_threshold: float = 0.5
     min_fallback_length: int = 50
     score_alert_band: float = 0.05
     

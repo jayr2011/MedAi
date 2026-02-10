@@ -50,7 +50,7 @@ class DatabricksService:
 
         system_prompt += (
             "Importante: Se as informações acima forem conflitantes, priorize os documentos locais. "
-            "Sempre cite as fontes se disponíveis no contexto."
+            "Sempre cite a fonte e o número da página (ex: Fonte X, pág. Y) imediatamente após a informação extraída dos documentos locais."
         )
 
         messages_payload = [{"role": "system", "content": system_prompt}]

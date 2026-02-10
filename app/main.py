@@ -1,6 +1,7 @@
 import logging
 from fastapi import FastAPI
 from app.api.v1.endpoints import chat
+from app.api.v1.endpoints import rag
 from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -19,6 +20,7 @@ app.add_middleware(
 )
 
 app.include_router(chat.router, prefix="/v1")
+app.include_router(rag.router, prefix="/v1")
 
 @app.get("/health")
 async def health():

@@ -8,6 +8,9 @@ venv/
 dist/
 build/
 
+chroma_db/
+uploads/
+
 # Vue / Frontend
 frontend/node_modules/
 frontend/dist/
