@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     databricks_token: str = ""
     max_tokens: Optional[int] = None
     debug: bool = True
+    huggingface_token: Optional[str] = None
 
     router_threshold: float = 0.5
     min_fallback_length: int = 50
