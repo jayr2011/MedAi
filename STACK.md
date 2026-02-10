@@ -17,24 +17,29 @@
 
 ### Framework & Runtime Backend
 
-- **FastAPI** `0.115.0` - Framework web assíncrono
+- **FastAPI** `0.128.6` - Framework web assíncrono
 - **Python** `3.12` - Linguagem de programação
-- **Uvicorn** `0.30.6` - Servidor ASGI com suporte a HTTP/2
+- **Uvicorn** `0.40.0` - Servidor ASGI com suporte a HTTP/2
 
 ### Bibliotecas Core
 
-- **Pydantic Settings** `2.5.2` - Gerenciamento de configurações
-- **HTTPX** `0.27.0` - Cliente HTTP assíncrono
-- **Python Multipart** `0.0.9` - Upload de arquivos
+- **Pydantic Settings** `2.10.1` - Gerenciamento de configurações
+- **HTTPX** `0.28.1` - Cliente HTTP assíncrono
+- **Python Multipart** `0.0.22` - Upload de arquivos
 - **SlowAPI** `0.1.9` - Rate limiting
 
 ### IA & Machine Learning
 
-- **LangChain** - Framework para aplicações LLM
-- **LangChain Community** - Integrações da comunidade
-- **ChromaDB** - Vector database para embeddings
-- **Sentence Transformers** - Embeddings de texto
-- **PyPDF** - Processamento de documentos PDF
+- **LangChain** `1.2.9` - Framework para aplicações LLM
+- **LangChain Community** `0.4.1` - Integrações da comunidade
+- **LangChain Chroma** - Integração do LangChain com o Chroma
+- **LangChain HuggingFace** `1.1.0` - Embeddings com modelos HF
+- **ChromaDB** `1.5.0` - Vector database para embeddings
+- **Sentence Transformers** `5.2.2` - Embeddings de texto
+- **PyPDF** `6.7.0` - Processamento de documentos PDF
+- **Llama CPP Python** - Guardrail local (Llama 3.1) para verificação de escopo
+- **Hugging Face Hub** - Suporte a download de modelos
+- **DDGS** `9.10.0` - Busca web (DuckDuckGo)
 
 ### Integração Externa
 
@@ -52,7 +57,9 @@ app/
 ├── core/
 │   └── config.py         # Configurações centralizadas
 └── services/
-    └── databricks_service.py  # Cliente do modelo
+  ├── databricks_service.py  # Cliente do modelo
+  ├── rag_service.py         # RAG com PDFs e ChromaDB
+  └── web_search_service.py  # Busca web e roteamento semântico
 ```
 
 ---
@@ -91,6 +98,12 @@ app/
 ### DevTools
 
 - **Vite Plugin Vue DevTools** `8.0.5` - Ferramentas de debug
+
+### SEO & Acessibilidade
+
+- **Meta tags** (description/canonical) e ícones
+- **robots.txt** - Controle de indexação
+- **ARIA e roles** em componentes de chat
 
 ### Estrutura
 
@@ -134,12 +147,16 @@ frontend/src/
 - **Streaming:** Suporte a SSE (Server-Sent Events)
 - **SSL:** Verificação desabilitada para Databricks (dev)
 - **Rate Limiting:** Implementado via SlowAPI
+- **Guardrail local:** Classificação de escopo com Llama 3.1 (CPU)
+- **RAG:** Ingestão e busca de documentos PDF via ChromaDB
+- **Busca web:** Roteamento semântico e filtros de domínios
 
 ### Frontend
 
 - **Dark Mode:** Suporte nativo com persistência
 - **Markdown:** Renderização de respostas do modelo
 - **Auto-scroll:** UI otimizada para chat
+- **Acessibilidade:** Live regions, labels e roles
 - **Type Safety:** TypeScript strict mode
 
 ### Modelo LLM
@@ -192,6 +209,9 @@ docker run -p 8000:8000 --env-file .env media
 
 - `GET /health` - Health check da aplicação
 - `POST /v1/chat/stream` - Chat com streaming de resposta
+- `POST /v1/rag/ingest` - Upload e ingestão de PDFs
+- `GET /v1/rag/documents` - Listar documentos ingeridos
+- `DELETE /v1/rag/documents/{file_name}` - Remover documento do RAG
 - `GET /` - Frontend SPA (produção)
 
 ---
@@ -201,10 +221,14 @@ docker run -p 8000:8000 --env-file .env media
 ```bash
 DATABRICKS_URL=<url-do-endpoint>
 DATABRICKS_TOKEN=<token-de-acesso>
+HUGGINGFACE_TOKEN=<token-hf-opcional>
 MAX_TOKENS=1024
+ROUTER_THRESHOLD=0.5
+MIN_FALLBACK_LENGTH=50
+SCORE_ALERT_BAND=0.05
 ```
 
 ---
 
-**Versão do Stack:** 1.0  
+**Versão do Stack:** 1.1  
 **Última Atualização:** Fevereiro 2026
