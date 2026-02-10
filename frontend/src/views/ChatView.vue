@@ -103,6 +103,11 @@ function handleSend(text: string) {
 function handleClear() {
   if (confirm('Tem certeza que deseja limpar a conversa?')) {
     clearMessages()
+    showScrollBtn.value = false
+    nextTick(() => {
+      const el = scrollContainer.value
+      if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+    })
   }
 }
 
