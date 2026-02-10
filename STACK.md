@@ -18,7 +18,7 @@
 ### Framework & Runtime Backend
 
 - **FastAPI** `0.115.0` - Framework web assíncrono
-- **Python** `3.14` - Linguagem de programação
+- **Python** `3.12` - Linguagem de programação
 - **Uvicorn** `0.30.6` - Servidor ASGI com suporte a HTTP/2
 
 ### Bibliotecas Core

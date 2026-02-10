@@ -36,13 +36,3 @@ class DatabricksService:
                     data = stripped[6:]
                     if data and data != "[DONE]":
                         yield data
-
-    async def chat_sync(self, messages: List[ChatMessage]) -> dict[str, Any]:
-        payload = {
-            "messages": [{"role": msg.role, "content": msg.content} for msg in messages],
-            "max_tokens": 200,
-            "temperature": 0.7
-        }
-        resp = await self.client.post(self.endpoint_url, json=payload)
-        resp.raise_for_status()
-        return resp.json()

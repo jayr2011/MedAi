@@ -8,7 +8,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # ---- Stage 2: Backend + Frontend ----
-FROM python:3.14-slim
+FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
