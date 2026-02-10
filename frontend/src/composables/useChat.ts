@@ -30,7 +30,7 @@ export function useChat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [
-            { role: 'system', content: 'Você é a MedIA, uma assistente médica virtual baseada no modelo Gemma. Sempre responda em português brasileiro. você lida com médicos registrados'},
+            { role: 'system', content: 'Você é a MedIA, uma assistente médica. Sempre responda em português brasileiro. você lida com médicos registrados'},
             ...messages.value
               .filter(m => m.content)
               .map(m => ({ role: m.role, content: m.content })),

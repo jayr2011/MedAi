@@ -1,9 +1,10 @@
 from pydantic_settings import BaseSettings
+from typing import Optional
 
 class Settings(BaseSettings):
     databricks_url: str = ""
     databricks_token: str = ""
-    max_tokens: int = 2048
+    max_tokens: Optional[int] = None
     debug: bool = True
     
     class Config:

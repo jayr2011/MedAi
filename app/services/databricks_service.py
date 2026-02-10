@@ -1,5 +1,5 @@
 import httpx
-from typing import AsyncGenerator, List, Any
+from typing import AsyncGenerator, List
 from app.api.v1.schemas.chat import ChatMessage
 from app.core.config import settings
 
@@ -17,12 +17,12 @@ class DatabricksService:
         self.endpoint_url = settings.databricks_url
 
     async def chat_stream(self, messages: List[ChatMessage]) -> AsyncGenerator[str, None]:
+        max_tokens = settings.max_tokens or 1024
         payload = {
             "messages": [{"role": msg.role, "content": msg.content} for msg in messages],
-            "max_tokens": getattr(settings, 'max_tokens', 1024),
-            "temperature": 0.5,
-            "top_p": 0.7,
-            "stream": True
+            "max_tokens": max_tokens,
+            "temperature": 0.2,
+            "stream": True,
         }
 
         async with self.client.stream("POST", self.endpoint_url, json=payload) as response:
