@@ -1,9 +1,13 @@
+import logging
 from fastapi import FastAPI
 from app.api.v1.endpoints import chat
 from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 

@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from app.api.v1.schemas.chat import ChatRequest, ChatMessage
@@ -5,6 +6,8 @@ from app.services.databricks_service import DatabricksService
 from app.services.rag_service import buscar_contexto
 from app.api.deps import get_databricks_service
 from app.services.web_search_service import web_search, deve_pesquisar_web
+
+logger = logging.getLogger(__name__) 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -24,7 +27,18 @@ async def chat_stream(
 
         precisa_web = deve_pesquisar_web(ultima_msg)
 
-        if precisa_web or (not contexto_rag and len(ultima_msg) > 15):
+        from app.services.web_search_service import MIN_FALLBACK_LENGTH
+
+        perform_web = bool(precisa_web or (not contexto_rag and len(ultima_msg) > MIN_FALLBACK_LENGTH))
+        logger.info(
+            "Decisão web_search: %s (precisa_semantic=%s, contexto_rag_present=%s, len_msg=%d)",
+            perform_web,
+            precisa_web,
+            bool(contexto_rag),
+            len(ultima_msg),
+        )
+
+        if perform_web:
             contexto_web = web_search(ultima_msg)
 
         system_instructions = "Você é a MedIA. responda sempre em português brasileiro. sempre indique entre 3 a 5 possiveis causas para os sintomas apresentados. indique exames complementares para confirmar o diagnóstico."

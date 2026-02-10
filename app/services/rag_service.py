@@ -1,8 +1,11 @@
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_classic.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 CHROMA_DIR = Path("./chroma_db")
 UPLOAD_DIR = Path("./uploads")
@@ -15,17 +18,26 @@ def get_embeddings():
     global _embeddings
     if _embeddings is None:
         _embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
+            model_kwargs={"device": "cpu"},
+            encode_kwargs={"normalize_embeddings": True}
         )
     return _embeddings
 
 def get_vectorstore():
     global _vectorstore
-    if _vectorstore is None and CHROMA_DIR.exists():
-        _vectorstore = Chroma(
-            persist_directory=str(CHROMA_DIR),
-            embedding_function=get_embeddings()
-        )
+    if _vectorstore is None:
+        if CHROMA_DIR.exists():
+            try:
+                _vectorstore = Chroma(
+                    persist_directory=str(CHROMA_DIR),
+                    embedding_function=get_embeddings()
+                )
+            except Exception as e:
+                logger.exception("Erro ao inicializar Chroma (persist_directory=%s): %s", CHROMA_DIR, e)
+                _vectorstore = None
+        else:
+            logger.info("Chroma DB não encontrado em %s. Nenhum documento ingerido ainda.", CHROMA_DIR)
     return _vectorstore
 
 def ingest_pdf(file_path: str) -> dict:
@@ -61,14 +73,21 @@ def ingest_pdf(file_path: str) -> dict:
         "pages": len(documents)
     }
 
-def buscar_contexto(pergunta: str, k: int = 3) -> str:
+def buscar_contexto(pergunta: str, k: int = 5) -> str:
     """Busca os chunks mais relevantes para a pergunta"""
     vs = get_vectorstore()
     if vs is None:
+        logger.debug("buscar_contexto: vectorstore não disponível.")
         return ""
 
-    docs = vs.similarity_search(pergunta, k=k)
+    try:
+        docs = vs.similarity_search(pergunta, k=k)
+    except Exception as e:
+        logger.exception("Erro ao executar similarity_search: %s", e)
+        return ""
+
     if not docs:
+        logger.debug("buscar_contexto: nenhuma correspondência encontrada para a pergunta.")
         return ""
 
     return "\n\n---\n\n".join([
