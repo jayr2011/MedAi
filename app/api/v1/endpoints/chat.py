@@ -16,6 +16,7 @@ async def chat_stream(
 ):
     """Endpoint para chat com streaming de resposta usando Server-Sent Events (SSE)"""
     try:
+        """Extrai a última mensagem do usuário e o histórico relevante para enviar ao serviço de chat."""
         ultima_msg = next(
             (m.content for m in reversed(request.messages) if m.role == "user"), ""
         )
@@ -28,6 +29,7 @@ async def chat_stream(
         import json
 
         async def generate():
+            """Gera a resposta em tempo real, enviando cada chunk como um evento SSE."""
             async for chunk in service.chat_stream(ultima_msg, historico):
                 payload = json.dumps({"choices": [{"delta": {"content": chunk}}]})
                 yield f"data: {payload}\n\n"

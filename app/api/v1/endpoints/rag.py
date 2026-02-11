@@ -6,7 +6,6 @@ import shutil
 
 router = APIRouter(prefix="/rag", tags=["rag"])
 
-
 @router.post("/ingest")
 async def ingest_document(file: UploadFile = File(...)):
     """Upload e ingestão de PDF para RAG"""
@@ -18,6 +17,7 @@ async def ingest_document(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, f)
 
     try:
+        """Processa o PDF e extrai informações para RAG"""
         result = ingest_pdf(str(file_path))
         return {
             "status": "ok",
@@ -38,7 +38,6 @@ async def list_documents():
 async def delete_document(file_name: str):
     """Remove um documento do RAG"""
     if deletar_documento(file_name):
-        # Remove arquivo físico também
         file_path = UPLOAD_DIR / file_name
         if file_path.exists():
             file_path.unlink()
