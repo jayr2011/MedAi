@@ -71,11 +71,13 @@ class DatabricksService:
         contexto_web = ""
 
         try:
+            """Busca contexto relevante usando RAG para a pergunta, o que pode incluir informações de documentos locais ou bases de conhecimento pré-indexadas."""
             contexto_rag = buscar_contexto(question)
         except Exception as e:
             logger.error(f"Erro ao buscar contexto RAG: {e}")
 
         try:
+            """Pode ser necessário realizar uma busca na web para obter informações atualizadas ou complementares, especialmente se o contexto local for insuficiente. A decisão de buscar na web é baseada em uma função que avalia a pergunta e o contexto disponível."""
             if deve_pesquisar_web(question):
                 logger.info(f"🧠 Roteador decidiu buscar na web para: {question}")
                 contexto_web = web_search(question)

@@ -38,6 +38,7 @@ def get_vectorstore():
         if CHROMA_DIR.exists():
             logger.info("Inicializando Chroma a partir de %s", CHROMA_DIR)
             try:
+                """Tenta carregar o vectorstore Chroma do diretório persistente, o que permite manter o contexto entre reinicializações da aplicação. Se o diretório não existir ou ocorrer um erro, o vectorstore será inicializado como None, indicando que nenhum contexto está disponível."""
                 _vectorstore = Chroma(
                     persist_directory=str(CHROMA_DIR),
                     embedding_function=get_embeddings()
@@ -56,6 +57,7 @@ def ingest_pdf(file_path: str) -> dict:
 
     logger.info("Iniciando ingestão do PDF %s", file_path)
     try:
+        """Carrega o PDF usando PyPDFLoader, dividindo-o em chunks gerenciáveis com RecursiveCharacterTextSplitter, e armazenando os chunks no vectorstore Chroma. Cada chunk é enriquecido com metadados indicando a fonte e a página de origem, facilitando a recuperação de contexto relevante para perguntas futuras."""
         loader = PyPDFLoader(file_path)
         documents = loader.load()
 
@@ -100,6 +102,7 @@ def buscar_contexto(pergunta: str, k: int = 5) -> str:
         return ""
 
     try:
+        """Realiza uma busca de similaridade no vectorstore para encontrar os documentos mais relevantes para a pergunta. O número de documentos retornados é controlado pelo parâmetro k. Cada documento encontrado é formatado com seus metadados de fonte e página, e o conteúdo é concatenado em um único string que pode ser utilizado como contexto para a geração de respostas."""
         docs = vs.similarity_search(pergunta, k=k)
     except Exception as e:
         logger.exception("Erro ao executar similarity_search: %s", e)
@@ -118,13 +121,14 @@ def buscar_contexto(pergunta: str, k: int = 5) -> str:
 
 
 def listar_documentos() -> list[str]:
-    """Lista os documentos já ingeridos"""
+    """Lista os documentos atualmente ingeridos no vectorstore, extraindo os nomes dos arquivos a partir dos metadados. Retorna uma lista de nomes de documentos únicos."""
     vs = get_vectorstore()
     if vs is None:
         logger.debug("listar_documentos: vectorstore não disponível.")
         return []
 
     try:
+        """Acessa os metadados do vectorstore para extrair os nomes dos arquivos dos documentos ingeridos. Os nomes dos arquivos são extraídos do campo 'source' nos metadados, e a função retorna uma lista de nomes únicos, representando os documentos atualmente disponíveis para consulta no sistema."""
         metadatas = vs.get()["metadatas"]
         docs = list(set(m.get("source", "?") for m in metadatas))
         logger.info("listar_documentos: %d documentos listados", len(docs))
@@ -142,6 +146,7 @@ def deletar_documento(file_name: str) -> bool:
         return False
 
     try:
+        """Busca os IDs dos chunks associados ao documento especificado pelo nome do arquivo, e os deleta do vectorstore. A função retorna True se pelo menos um chunk foi deletado, indicando que o documento foi removido com sucesso, ou False se nenhum chunk correspondente foi encontrado, indicando que o documento não estava presente no vectorstore."""
         ids_to_delete = []
         data = vs.get()
         for i, meta in enumerate(data["metadatas"]):

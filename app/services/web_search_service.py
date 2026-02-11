@@ -42,6 +42,7 @@ def deve_pesquisar_web(query: str, threshold: float | None = None) -> bool:
     """
     global _embeddings_cache
     try:
+        """Decide semanticamente se a query precisa de busca externa comparando a pergunta com exemplos de temas médicos conhecidos. A função utiliza embeddings para calcular a similaridade entre a pergunta e um conjunto de exemplos pré-definidos, e retorna True se a similaridade máxima for acima do limiar especificado, indicando que a pergunta é relevante o suficiente para justificar uma busca na web."""
         model = get_embeddings()
         if _embeddings_cache is None:
             docs_emb = model.embed_documents(EXEMPLOS_BUSCA)
