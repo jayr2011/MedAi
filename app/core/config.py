@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 class Settings(BaseSettings):
+    """Configuração de aplicação, carregada a partir de variáveis de ambiente ou arquivos .env."""
     databricks_url: str
     databricks_token: str
     max_tokens: Optional[int] = None

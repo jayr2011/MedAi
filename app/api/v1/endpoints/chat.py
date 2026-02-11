@@ -14,6 +14,7 @@ async def chat_stream(
     request: ChatRequest,
     service: DatabricksService = Depends(get_databricks_service)
 ):
+    """Endpoint para chat com streaming de resposta usando Server-Sent Events (SSE)"""
     try:
         ultima_msg = next(
             (m.content for m in reversed(request.messages) if m.role == "user"), ""

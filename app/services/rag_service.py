@@ -20,6 +20,7 @@ _embeddings = None
 _vectorstore = None
 
 def get_embeddings():
+    """Inicializa e retorna o modelo de embeddings HuggingFace, utilizando cache para evitar reinicializações desnecessárias."""
     global _embeddings
     if _embeddings is None:
         _embeddings = HuggingFaceEmbeddings(
@@ -31,6 +32,7 @@ def get_embeddings():
     return _embeddings
 
 def get_vectorstore():
+    """Inicializa e retorna o vectorstore Chroma, carregando do diretório persistente se disponível, ou criando um novo se necessário."""
     global _vectorstore
     if _vectorstore is None:
         if CHROMA_DIR.exists():
@@ -49,7 +51,7 @@ def get_vectorstore():
     return _vectorstore
 
 def ingest_pdf(file_path: str) -> dict:
-    """Processa um PDF e salva os embeddings no ChromaDB"""
+    """Ingesta um arquivo PDF, processando seu conteúdo em chunks e armazenando-os no vectorstore Chroma para posterior recuperação de contexto. Retorna um resumo da operação realizada."""
     global _vectorstore
 
     logger.info("Iniciando ingestão do PDF %s", file_path)
@@ -91,7 +93,7 @@ def ingest_pdf(file_path: str) -> dict:
         raise
 
 def buscar_contexto(pergunta: str, k: int = 5) -> str:
-    """Busca os chunks mais relevantes para a pergunta"""
+    """Busca o contexto mais relevante para a pergunta usando similaridade semântica no vectorstore. Retorna um string formatado com as informações dos documentos encontrados."""
     vs = get_vectorstore()
     if vs is None:
         logger.debug("buscar_contexto: vectorstore não disponível.")
@@ -132,7 +134,7 @@ def listar_documentos() -> list[str]:
         return []
 
 def deletar_documento(file_name: str) -> bool:
-    """Deleta um documento do vectorstore"""
+    """Deleta um documento do vectorstore com base no nome do arquivo, removendo todos os chunks associados."""
     logger.info("Solicitação para deletar documento %s", file_name)
     vs = get_vectorstore()
     if vs is None:

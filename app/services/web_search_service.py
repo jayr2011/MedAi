@@ -65,6 +65,7 @@ def web_search(query: str, max_results=10) -> str:
     e retorna o contexto formatado.
     """
     try:
+        """Realiza a busca no DuckDuckGo, aplicando filtros para priorizar fontes confiáveis e evitar domínios bloqueados. Retorna um contexto formatado com os resultados relevantes encontrados."""
         logger.info(f"🔎 Iniciando busca web para: {query}")
         with DDGS(verify=False) as ddgs:
             raw_results = list(ddgs.text(query, max_results=max_results, backend="brave"))

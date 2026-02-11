@@ -24,12 +24,14 @@ app.include_router(rag.router, prefix="/v1")
 
 @app.get("/health")
 async def health():
+    """Endpoint de saúde para verificar se a API está funcionando."""
     return {
         "status": "OK",
         "databricks_url": settings.databricks_url[:50] + "...",
         "max_tokens": settings.max_tokens
     }
 
+"""Configura o caminho para o frontend e monta os arquivos estáticos se o diretório existir."""
 FRONTEND_DIR = Path("/app/frontend") if Path("/app/frontend").exists() else Path(__file__).parent.parent / "frontend" / "dist"
 
 # Monta o frontend apenas se o diretório existir

@@ -11,6 +11,7 @@ from llama_cpp import Llama
 logger = logging.getLogger(__name__)
 
 class DatabricksService:
+    """Serviço para interagir com a API do Databricks e realizar operações relacionadas ao modelo de linguagem e classificação de perguntas médicas."""
     def __init__(self) -> None:
         self.client = httpx.AsyncClient(
             headers={
@@ -61,7 +62,7 @@ class DatabricksService:
             return True 
 
     async def chat_stream(self, question: str, history: List[ChatMessage]) -> AsyncGenerator[str, None]:
-
+        """Gera uma resposta em streaming do Databricks, integrando contexto RAG e resultados de busca web quando aplicável."""
         if not await self.is_pergunta_medica(question):
             yield "Peço desculpa, mas como MedAi, só posso responder a questões relacionadas com saúde e medicina. Como posso ajudar com o seu bem-estar hoje?"
             return
@@ -113,11 +114,13 @@ class DatabricksService:
         }
 
         async with self.client.stream("POST", self.endpoint_url, json=payload) as response:
+            """Processa a resposta em streaming do Databricks, extraindo e yieldando o conteúdo à medida que chega."""
             if response.status_code != 200:
                 error = await response.aread()
                 raise ValueError(f"Databricks {response.status_code}: {error.decode()}")
 
             async for line in response.aiter_lines():
+                """Cada linha do stream é esperada no formato 'data: {json}', onde o JSON contém o conteúdo gerado."""
                 stripped = line.strip()
                 if stripped.startswith("data: "):
                     data = stripped[6:]
