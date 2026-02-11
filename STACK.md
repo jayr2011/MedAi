@@ -150,6 +150,7 @@ frontend/src/
 - **Guardrail local:** Classificação de escopo com Llama 3.1 (CPU)
 - **RAG:** Ingestão e busca de documentos PDF via ChromaDB
 - **Busca web:** Roteamento semântico e filtros de domínios
+- **Docstrings:** Uso dos docstrings para documentação de API e métodos
 
 ### Frontend
 
