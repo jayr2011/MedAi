@@ -4,16 +4,19 @@ import app.services.web_search_service as wss
 class FakeModel:
     """Modelo falso para simular o comportamento de embeddings sem depender de implementações reais."""
     def __init__(self, docs_emb=None, query_emb=None, raise_on_embed_documents=False):
+        """Inicializa o modelo falso com embeddings pré-definidos e controle sobre o comportamento de embed_documents."""
         self._docs_emb = docs_emb
         self._query_emb = query_emb
         self._raise_on_embed_documents = raise_on_embed_documents
 
     def embed_documents(self, docs):
+        """Simula a função de embed_documents do pacote HuggingFaceEmbeddings, podendo lançar uma exceção se configurado para isso."""
         if self._raise_on_embed_documents:
             raise RuntimeError("embed_documents should not be called")
         return self._docs_emb
 
     def embed_query(self, query):
+        """Simula a função de embed_query que vem do pacote HuggingFaceEmbeddings, retornando o embedding pré-definido para a query."""
         return self._query_emb
 
 def test_returns_true_when_score_above_threshold(monkeypatch):
