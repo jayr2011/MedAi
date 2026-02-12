@@ -158,8 +158,8 @@ def test_ingest_pdf_failure():
              patch("app.services.rag_service.RecursiveCharacterTextSplitter") as MockSplitter, \
              patch("app.services.rag_service.Chroma.from_documents", side_effect=Exception("persist failed")):
 
-            MockLoader.return_value.load.return_value = [MagicMock()]  # 1 página
-            MockSplitter.return_value.split_documents.return_value = [MagicMock()]  # 1 chunk
+            MockLoader.return_value.load.return_value = [MagicMock()]
+            MockSplitter.return_value.split_documents.return_value = [MagicMock()]
 
             import pytest
             with pytest.raises(Exception, match="persist failed"):
@@ -168,6 +168,7 @@ def test_ingest_pdf_failure():
             assert getattr(rag_service, "_vectorstore") is None
 
 def test_ingest_pdf_adds_to_existing_vectorstore():
+    """Testa se ingest_pdf adiciona os chunks ao vectorstore existente em vez de criar um novo."""
     mock_vs = MagicMock()
     documents = [MagicMock()]
     chunk = MagicMock(); chunk.metadata = {}; chunk.page_content = "c"

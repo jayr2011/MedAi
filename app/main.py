@@ -34,6 +34,6 @@ async def health():
 """Configura o caminho para o frontend e monta os arquivos estáticos se o diretório existir."""
 FRONTEND_DIR = Path("/app/frontend") if Path("/app/frontend").exists() else Path(__file__).parent.parent / "frontend" / "dist"
 
-# Monta o frontend apenas se o diretório existir
+"""Se o diretório do frontend existir, monta os arquivos estáticos na raiz do aplicativo FastAPI."""
 if FRONTEND_DIR.exists():
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

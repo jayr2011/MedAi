@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 class DatabricksService:
     """Serviço para interagir com a API do Databricks e realizar operações relacionadas ao modelo de linguagem e classificação de perguntas médicas."""
     def __init__(self) -> None:
+        """Inicializa o cliente HTTP para comunicação com o Databricks e tenta carregar um modelo local de Llama para classificação de perguntas médicas, caso esteja disponível."""
         self.client = httpx.AsyncClient(
             headers={
                 "Authorization": f"Bearer {settings.databricks_token}",
@@ -24,6 +25,7 @@ class DatabricksService:
         self.endpoint_url = settings.databricks_url
         self.guardrail_llm = None
         try:
+            """Carrega o modelo Guardrail Llama-3 localmente para classificação de perguntas médicas, evitando custos de token do Databricks para essa tarefa. O modelo é otimizado para rodar na CPU, garantindo acessibilidade mesmo sem GPU dedicada."""
             self.guardrail_llm = Llama.from_pretrained(
                 repo_id="bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
                 filename="Meta-Llama-3.1-8B-Instruct-IQ2_M.gguf",
@@ -51,6 +53,7 @@ class DatabricksService:
         )
 
         try:
+            """Executa o modelo Guardrail Llama-3 para classificar a pergunta, esperando uma resposta clara de SIM ou NÃO. A resposta é processada para determinar se a pergunta é médica ou não, e o resultado é logado para monitoramento e análise futura."""
             output = self.guardrail_llm(prompt, max_tokens=5, stop=["<|eot_id|>"], temperature=0.0)
             resposta = output["choices"][0]["text"].strip().upper()
 
@@ -128,6 +131,7 @@ class DatabricksService:
                     data = stripped[6:]
                     if data and data != "[DONE]":
                         try:
+                            """Tenta decodificar o JSON da linha para extrair o conteúdo gerado. O conteúdo é esperado no campo 'choices[0].delta.content'. Se o JSON estiver malformado ou não contiver os campos esperados, a linha é ignorada para evitar interrupções no stream."""
                             json_data = json.loads(data)
                             content = json_data['choices'][0]['delta'].get('content', '')
                             if content:
