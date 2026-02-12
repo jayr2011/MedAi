@@ -8,7 +8,17 @@ router = APIRouter(prefix="/rag", tags=["rag"])
 
 @router.post("/ingest")
 async def ingest_document(file: UploadFile = File(...)):
-    """Upload e ingestão de PDF para RAG"""
+    """Recebe um PDF via upload, persiste e ingere no RAG.
+
+    Args:
+        file (UploadFile): arquivo enviado pelo cliente (deve ser PDF).
+
+    Returns:
+        dict: resumo com chaves `file`, `chunks` e `pages` em caso de sucesso.
+
+    Raises:
+        HTTPException: 400 se o arquivo não for PDF; 500 em erro de ingestão.
+    """
     if not file.filename or not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Apenas PDFs são suportados")
 
@@ -17,7 +27,7 @@ async def ingest_document(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, f)
 
     try:
-        """Processa o PDF e extrai informações para RAG"""
+        # Processa o PDF e injeta no vectorstore via `ingest_pdf`.
         result = ingest_pdf(str(file_path))
         return {
             "status": "ok",
@@ -30,13 +40,27 @@ async def ingest_document(file: UploadFile = File(...)):
 
 @router.get("/documents")
 async def list_documents():
-    """Lista documentos ingeridos"""
+    """Retorna a lista de documentos atualmente ingeridos no RAG.
+
+    Returns:
+        dict: chave `documents` com lista de nomes de arquivos.
+    """
     return {"documents": listar_documentos()}
 
 
 @router.delete("/documents/{file_name}")
 async def delete_document(file_name: str):
-    """Remove um documento do RAG"""
+    """Remove um documento ingerido e apaga o arquivo de upload.
+
+    Args:
+        file_name (str): nome do arquivo a ser removido.
+
+    Returns:
+        dict: status e mensagem em caso de sucesso.
+
+    Raises:
+        HTTPException: 404 quando o documento não é encontrado no vectorstore.
+    """
     if deletar_documento(file_name):
         file_path = UPLOAD_DIR / file_name
         if file_path.exists():

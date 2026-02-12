@@ -14,9 +14,21 @@ async def chat_stream(
     request: ChatRequest,
     service: DatabricksService = Depends(get_databricks_service)
 ):
-    """Endpoint para chat com streaming de resposta usando Server-Sent Events (SSE)"""
+    """Stream de chat via Server-Sent Events (SSE).
+
+    Args:
+        request (ChatRequest): payload contendo o histórico de mensagens.
+        service (DatabricksService): serviço injetado que produz o stream.
+
+    Returns:
+        StreamingResponse: resposta SSE que emite chunks JSON no formato
+        {"choices": [{"delta": {"content": "..."}}]}.
+
+    Raises:
+        HTTPException: em caso de erro interno durante o processamento.
+    """
     try:
-        """Extrai a última mensagem do usuário e o histórico relevante para enviar ao serviço de chat."""
+        # Extrai a última mensagem do usuário e constrói o histórico a ser enviado
         ultima_msg = next(
             (m.content for m in reversed(request.messages) if m.role == "user"), ""
         )
@@ -29,7 +41,7 @@ async def chat_stream(
         import json
 
         async def generate():
-            """Gera a resposta em tempo real, enviando cada chunk como um evento SSE."""
+            # Itera sobre o generator do serviço e emite cada chunk como SSE
             async for chunk in service.chat_stream(ultima_msg, historico):
                 payload = json.dumps({"choices": [{"delta": {"content": chunk}}]})
                 yield f"data: {payload}\n\n"

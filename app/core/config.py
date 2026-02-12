@@ -1,8 +1,26 @@
+"""Carregamento centralizado de configurações via Pydantic Settings.
+
+Este módulo expõe a classe `Settings` que agrega variáveis de
+ambiente/`.env` usadas pela aplicação e a instância `settings`.
+"""
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
+
 class Settings(BaseSettings):
-    """Configuração de aplicação, carregada a partir de variáveis de ambiente ou arquivos .env."""
+    """Configurações da aplicação carregadas automaticamente.
+
+    Campos importantes:
+        databricks_url (str): URL do endpoint Databricks.
+        databricks_token (str): token de autenticação para Databricks.
+        max_tokens (Optional[int]): número máximo de tokens para geração.
+        debug (bool): ativa modo de debug (afeta verificação TLS no cliente HTTP).
+        huggingface_token (Optional[str]): token para HF (quando usado).
+
+    Configuração de carregamento:
+        - valores podem vir de variáveis de ambiente ou do arquivo `.env`.
+    """
     databricks_url: str
     databricks_token: str
     max_tokens: Optional[int] = None
@@ -19,4 +37,6 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
+
+# Instância global reutilizável
 settings = Settings()

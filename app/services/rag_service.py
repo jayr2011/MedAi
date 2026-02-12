@@ -1,3 +1,10 @@
+"""RAG utilities: ingestão de PDFs, armazenamento/fetch em Chroma e busca de contexto.
+
+Este módulo fornece helpers singleton para embeddings e vectorstore (Chroma),
+funções para ingestão de PDFs (split + metadata) e operações de consulta/remoção
+sobre o vectorstore persistente localizado em `CHROMA_DIR`.
+"""
+
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_classic.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -20,7 +27,16 @@ _embeddings = None
 _vectorstore = None
 
 def get_embeddings():
-    """Inicializa e retorna o modelo de embeddings HuggingFace, utilizando cache para evitar reinicializações desnecessárias."""
+    """Returna uma instância singleton do modelo de embeddings HuggingFace.
+
+    Returns:
+        HuggingFaceEmbeddings: objeto de embeddings configurado com
+            `sentence-transformers/all-MiniLM-L6-v2` e execução em CPU.
+
+    Notes:
+        A instância é criada apenas uma vez e armazenada em `_embeddings` para
+        reutilização posterior (cache in-process).
+    """
     global _embeddings
     if _embeddings is None:
         _embeddings = HuggingFaceEmbeddings(
@@ -32,13 +48,24 @@ def get_embeddings():
     return _embeddings
 
 def get_vectorstore():
-    """Inicializa e retorna o vectorstore Chroma, carregando do diretório persistente se disponível, ou criando um novo se necessário."""
+    """Retorna uma instância singleton do Chroma vectorstore persistido.
+
+    Behavior:
+        - Se `CHROMA_DIR` existir, tenta abrir o store com a função de embeddings
+          retornada por `get_embeddings()`.
+        - Em caso de erro durante a abertura, grava `None` em `_vectorstore`
+          e retorna `None`.
+
+    Returns:
+        Optional[Chroma]: instância do vectorstore ou `None` quando indisponível.
+    """
     global _vectorstore
     if _vectorstore is None:
         if CHROMA_DIR.exists():
             logger.info("Inicializando Chroma a partir de %s", CHROMA_DIR)
             try:
-                """Tenta carregar o vectorstore Chroma do diretório persistente, o que permite manter o contexto entre reinicializações da aplicação. Se o diretório não existir ou ocorrer um erro, o vectorstore será inicializado como None, indicando que nenhum contexto está disponível."""
+                # Tenta carregar o vectorstore Chroma do diretório persistente
+                # para preservar contexto entre reinicializações.
                 _vectorstore = Chroma(
                     persist_directory=str(CHROMA_DIR),
                     embedding_function=get_embeddings()
@@ -52,12 +79,30 @@ def get_vectorstore():
     return _vectorstore
 
 def ingest_pdf(file_path: str) -> dict:
-    """Ingesta um arquivo PDF, processando seu conteúdo em chunks e armazenando-os no vectorstore Chroma para posterior recuperação de contexto. Retorna um resumo da operação realizada."""
+    """Ingere um PDF, divide em chunks e persiste no vectorstore.
+
+    Args:
+        file_path (str): caminho para o arquivo PDF no filesystem.
+
+    Returns:
+        dict: resumo da ingestão contendo `file` (nome), `chunks` (int) e
+            `pages` (int).
+
+    Raises:
+        Exception: propaga qualquer erro ocorrido durante leitura/ingestão.
+
+    Behavior:
+        - carrega o PDF com `PyPDFLoader`;
+        - divide o conteúdo em chunks usando `RecursiveCharacterTextSplitter`;
+        - anexa metadado `source` com o nome do arquivo em cada chunk;
+        - cria o vectorstore persistido (se inexistente) ou adiciona os chunks ao
+          vectorstore existente.
+    """
     global _vectorstore
 
     logger.info("Iniciando ingestão do PDF %s", file_path)
     try:
-        """Carrega o PDF usando PyPDFLoader, dividindo-o em chunks gerenciáveis com RecursiveCharacterTextSplitter, e armazenando os chunks no vectorstore Chroma. Cada chunk é enriquecido com metadados indicando a fonte e a página de origem, facilitando a recuperação de contexto relevante para perguntas futuras."""
+        # Carrega o PDF e divide em chunks gerenciáveis
         loader = PyPDFLoader(file_path)
         documents = loader.load()
 
@@ -70,6 +115,7 @@ def ingest_pdf(file_path: str) -> dict:
 
         file_name = Path(file_path).name
         for chunk in chunks:
+            # Adiciona metadado de origem para cada chunk
             chunk.metadata["source"] = file_name
 
         logger.info("Processado %s: %d chunks em %d páginas", file_name, len(chunks), len(documents))
@@ -95,14 +141,23 @@ def ingest_pdf(file_path: str) -> dict:
         raise
 
 def buscar_contexto(pergunta: str, k: int = 5) -> str:
-    """Busca o contexto mais relevante para a pergunta usando similaridade semântica no vectorstore. Retorna um string formatado com as informações dos documentos encontrados."""
+    """Busca e formata trechos relevantes do vectorstore por similaridade.
+
+    Args:
+        pergunta (str): texto da consulta.
+        k (int): número máximo de documentos a retornar (padrão: 5).
+
+    Returns:
+        str: contexto concatenado formatado; string vazia quando não há
+            vectorstore disponível, erro, ou nenhum resultado.
+    """
     vs = get_vectorstore()
     if vs is None:
         logger.debug("buscar_contexto: vectorstore não disponível.")
         return ""
 
     try:
-        """Realiza uma busca de similaridade no vectorstore para encontrar os documentos mais relevantes para a pergunta. O número de documentos retornados é controlado pelo parâmetro k. Cada documento encontrado é formatado com seus metadados de fonte e página, e o conteúdo é concatenado em um único string que pode ser utilizado como contexto para a geração de respostas."""
+        # Executa busca semântica por similaridade
         docs = vs.similarity_search(pergunta, k=k)
     except Exception as e:
         logger.exception("Erro ao executar similarity_search: %s", e)
@@ -114,21 +169,27 @@ def buscar_contexto(pergunta: str, k: int = 5) -> str:
 
     logger.debug("buscar_contexto: %d documentos retornados para pergunta '%s'", len(docs), pergunta)
 
+    # Formata cada documento com fonte/página e concatena separando por ---
     return "\n\n---\n\n".join([
         f"[Fonte: {doc.metadata.get('source', '?')} | Pág. {doc.metadata.get('page', '?')}]\n{doc.page_content}"
         for doc in docs
     ])
 
-
 def listar_documentos() -> list[str]:
-    """Lista os documentos atualmente ingeridos no vectorstore, extraindo os nomes dos arquivos a partir dos metadados. Retorna uma lista de nomes de documentos únicos."""
+    """Retorna nomes únicos de documentos ingeridos no vectorstore.
+
+    Returns:
+        list[str]: lista de nomes de arquivos (campo `source` dos metadados).
+            Retorna lista vazia se o vectorstore não estiver disponível ou em
+            caso de erro durante a leitura de metadados.
+    """
     vs = get_vectorstore()
     if vs is None:
         logger.debug("listar_documentos: vectorstore não disponível.")
         return []
 
     try:
-        """Acessa os metadados do vectorstore para extrair os nomes dos arquivos dos documentos ingeridos. Os nomes dos arquivos são extraídos do campo 'source' nos metadados, e a função retorna uma lista de nomes únicos, representando os documentos atualmente disponíveis para consulta no sistema."""
+        # Extrai os nomes dos arquivos a partir dos metadados persistidos
         metadatas = vs.get()["metadatas"]
         docs = list(set(m.get("source", "?") for m in metadatas))
         logger.info("listar_documentos: %d documentos listados", len(docs))
@@ -136,9 +197,16 @@ def listar_documentos() -> list[str]:
     except Exception as e:
         logger.exception("Erro ao listar documentos: %s", e)
         return []
-
 def deletar_documento(file_name: str) -> bool:
-    """Deleta um documento do vectorstore com base no nome do arquivo, removendo todos os chunks associados."""
+    """Remove do vectorstore todos os chunks com `source == file_name`.
+
+    Args:
+        file_name (str): nome do arquivo cujos chunks devem ser removidos.
+
+    Returns:
+        bool: True se ao menos um chunk foi deletado; False caso contrário ou
+            se o vectorstore estiver indisponível.
+    """
     logger.info("Solicitação para deletar documento %s", file_name)
     vs = get_vectorstore()
     if vs is None:
@@ -146,7 +214,7 @@ def deletar_documento(file_name: str) -> bool:
         return False
 
     try:
-        """Busca os IDs dos chunks associados ao documento especificado pelo nome do arquivo, e os deleta do vectorstore. A função retorna True se pelo menos um chunk foi deletado, indicando que o documento foi removido com sucesso, ou False se nenhum chunk correspondente foi encontrado, indicando que o documento não estava presente no vectorstore."""
+        # Recupera IDs correspondentes ao `source` indicado e deleta-os
         ids_to_delete = []
         data = vs.get()
         for i, meta in enumerate(data["metadatas"]):

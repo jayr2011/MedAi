@@ -11,9 +11,23 @@ from llama_cpp import Llama
 logger = logging.getLogger(__name__)
 
 class DatabricksService:
-    """Serviço para interagir com a API do Databricks e realizar operações relacionadas ao modelo de linguagem e classificação de perguntas médicas."""
+    """Orquestra guardrail local, contexto (RAG/web) e streaming de respostas via Databricks.
+
+    Attributes:
+        client (httpx.AsyncClient): cliente HTTP assíncrono configurado para o endpoint Databricks.
+        endpoint_url (str): URL do endpoint de inferência.
+        guardrail_llm (Optional[Llama]): modelo local usado para classificação de escopo; pode ser None.
+    """
     def __init__(self) -> None:
-        """Inicializa o cliente HTTP para comunicação com o Databricks e tenta carregar um modelo local de Llama para classificação de perguntas médicas, caso esteja disponível."""
+        """Inicializa o serviço.
+
+        Configura o cliente HTTP assíncrono e tenta carregar um modelo local `Llama`
+        usado como guardrail para classificação de perguntas médicas.
+
+        Notes:
+            O carregamento do modelo é 'best-effort' — em caso de falha `guardrail_llm`
+            será `None` e o serviço continuará funcional.
+        """
         self.client = httpx.AsyncClient(
             headers={
                 "Authorization": f"Bearer {settings.databricks_token}",
@@ -25,7 +39,9 @@ class DatabricksService:
         self.endpoint_url = settings.databricks_url
         self.guardrail_llm = None
         try:
-            """Carrega o modelo Guardrail Llama-3 localmente para classificação de perguntas médicas, evitando custos de token do Databricks para essa tarefa. O modelo é otimizado para rodar na CPU, garantindo acessibilidade mesmo sem GPU dedicada."""
+            # Carrega o modelo Guardrail Llama-3 localmente para classificação de
+            # perguntas médicas (best-effort). Em caso de falha, `guardrail_llm`
+            # permanecerá `None`.
             self.guardrail_llm = Llama.from_pretrained(
                 repo_id="bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
                 filename="Meta-Llama-3.1-8B-Instruct-IQ2_M.gguf",
@@ -39,7 +55,15 @@ class DatabricksService:
             self.guardrail_llm = None
 
     async def is_pergunta_medica(self, question: str) -> bool:
-        """Verifica escopo localmente na CPU sem gastar tokens do Databricks"""
+        """Classifica se uma pergunta é de escopo médico.
+
+        Args:
+            question (str): pergunta do usuário.
+
+        Returns:
+            bool: True se a pergunta for classificada como médica ou se houver
+            falha/indisponibilidade do guardrail (fallback permissivo).
+        """
         if not self.guardrail_llm:
             logger.warning("Guardrail Llama-3 não disponível, assumindo que a pergunta é médica.")
             return True
@@ -53,7 +77,7 @@ class DatabricksService:
         )
 
         try:
-            """Executa o modelo Guardrail Llama-3 para classificar a pergunta, esperando uma resposta clara de SIM ou NÃO. A resposta é processada para determinar se a pergunta é médica ou não, e o resultado é logado para monitoramento e análise futura."""
+            # Executa o modelo guardrail e interpreta resposta 'SIM'/'NÃO'.
             output = self.guardrail_llm(prompt, max_tokens=5, stop=["<|eot_id|>"], temperature=0.0)
             resposta = output["choices"][0]["text"].strip().upper()
 
@@ -65,7 +89,18 @@ class DatabricksService:
             return True 
 
     async def chat_stream(self, question: str, history: List[ChatMessage]) -> AsyncGenerator[str, None]:
-        """Gera uma resposta em streaming do Databricks, integrando contexto RAG e resultados de busca web quando aplicável."""
+        """Gera resposta em streaming a partir do endpoint Databricks.
+
+        Args:
+            question (str): pergunta do usuário.
+            history (List[ChatMessage]): histórico de mensagens para contexto.
+
+        Yields:
+            str: chunks de texto extraídos do campo `choices[0].delta.content`.
+
+        Raises:
+            ValueError: se o endpoint retornar status HTTP != 200.
+        """
         if not await self.is_pergunta_medica(question):
             yield "Peço desculpa, mas como MedAi, só posso responder a questões relacionadas com saúde e medicina. Como posso ajudar com o seu bem-estar hoje?"
             return
@@ -74,13 +109,13 @@ class DatabricksService:
         contexto_web = ""
 
         try:
-            """Busca contexto relevante usando RAG para a pergunta, o que pode incluir informações de documentos locais ou bases de conhecimento pré-indexadas."""
+            # Obtém contexto RAG (se disponível) para enriquecer o prompt.
             contexto_rag = buscar_contexto(question)
         except Exception as e:
             logger.error(f"Erro ao buscar contexto RAG: {e}")
 
         try:
-            """Pode ser necessário realizar uma busca na web para obter informações atualizadas ou complementares, especialmente se o contexto local for insuficiente. A decisão de buscar na web é baseada em uma função que avalia a pergunta e o contexto disponível."""
+            # Quando necessário, realiza busca na web para complementar o contexto.
             if deve_pesquisar_web(question):
                 logger.info(f"🧠 Roteador decidiu buscar na web para: {question}")
                 contexto_web = web_search(question)
@@ -119,19 +154,19 @@ class DatabricksService:
         }
 
         async with self.client.stream("POST", self.endpoint_url, json=payload) as response:
-            """Processa a resposta em streaming do Databricks, extraindo e yieldando o conteúdo à medida que chega."""
+            # Processa a resposta em streaming do Databricks.
             if response.status_code != 200:
                 error = await response.aread()
                 raise ValueError(f"Databricks {response.status_code}: {error.decode()}")
 
             async for line in response.aiter_lines():
-                """Cada linha do stream é esperada no formato 'data: {json}', onde o JSON contém o conteúdo gerado."""
+                # Cada linha do stream é esperada no formato 'data: {json}'.
                 stripped = line.strip()
                 if stripped.startswith("data: "):
                     data = stripped[6:]
                     if data and data != "[DONE]":
                         try:
-                            """Tenta decodificar o JSON da linha para extrair o conteúdo gerado. O conteúdo é esperado no campo 'choices[0].delta.content'. Se o JSON estiver malformado ou não contiver os campos esperados, a linha é ignorada para evitar interrupções no stream."""
+                            # Extrai `delta.content` do JSON da linha (se existir).
                             json_data = json.loads(data)
                             content = json_data['choices'][0]['delta'].get('content', '')
                             if content:

@@ -1,3 +1,13 @@
+"""Serviços de busca web e roteamento semântico.
+
+Fornece duas responsabilidades principais:
+- decidir semanticamente quando realizar busca web (`deve_pesquisar_web`);
+- executar buscas no DuckDuckGo com filtros e formatação (`web_search`).
+
+O módulo utiliza embeddings para comparar a query com exemplos médicos e
+DDGS para obter resultados do mecanismo de busca.
+"""
+
 import logging
 import numpy as np
 from ddgs import DDGS
@@ -36,13 +46,24 @@ EXEMPLOS_BUSCA = [
 _embeddings_cache = None
 
 def deve_pesquisar_web(query: str, threshold: float | None = None) -> bool:
-    """
-    Decide semanticamente se a query precisa de busca externa comparando
-    a pergunta com exemplos de temas médicos conhecidos.
+    """Decide se uma consulta deve acionar busca web externa.
+
+    A decisão é baseada em similaridade semântica entre a `query` e um conjunto
+    de exemplos médicos (`EXEMPLOS_BUSCA`). Usa embeddings para calcular a
+    similaridade e compara a similaridade máxima com `threshold`.
+
+    Args:
+        query (str): texto da pergunta do usuário.
+        threshold (float | None): limiar opcional para tomada de decisão. Se
+            None, `settings.router_threshold` é utilizado.
+
+    Returns:
+        bool: True quando a similaridade máxima >= limiar; False em caso de
+            erro ou quando abaixo do limiar.
     """
     global _embeddings_cache
     try:
-        """Decide semanticamente se a query precisa de busca externa comparando a pergunta com exemplos de temas médicos conhecidos. A função utiliza embeddings para calcular a similaridade entre a pergunta e um conjunto de exemplos pré-definidos, e retorna True se a similaridade máxima for acima do limiar especificado, indicando que a pergunta é relevante o suficiente para justificar uma busca na web."""
+        # Recupera/gera embeddings dos exemplos (cache in-process)
         model = get_embeddings()
         if _embeddings_cache is None:
             docs_emb = model.embed_documents(EXEMPLOS_BUSCA)
@@ -61,12 +82,21 @@ def deve_pesquisar_web(query: str, threshold: float | None = None) -> bool:
         return False
 
 def web_search(query: str, max_results=10) -> str:
-    """
-    Realiza a busca no DuckDuckGo, aplica filtros de domínios médicos
-    e retorna o contexto formatado.
+    """Executa busca no DuckDuckGo e retorna contexto filtrado e formatado.
+
+    A função prioriza domínios confiáveis médicos e exclui domínios listados em
+    `DOMINIOS_BLOQUEADOS`. Se nenhum resultado confiável for encontrado, uma
+    pequena amostra de resultados não bloqueados pode ser retornada.
+
+    Args:
+        query (str): texto da pesquisa.
+        max_results (int): número máximo de resultados a considerar.
+
+    Returns:
+        str: contexto formatado com título, URL e resumo; string vazia em caso
+            de erro ou ausência de resultados.
     """
     try:
-        """Realiza a busca no DuckDuckGo, aplicando filtros para priorizar fontes confiáveis e evitar domínios bloqueados. Retorna um contexto formatado com os resultados relevantes encontrados."""
         logger.info(f"🔎 Iniciando busca web para: {query}")
         with DDGS(verify=False) as ddgs:
             raw_results = list(ddgs.text(query, max_results=max_results, backend="brave"))
@@ -78,15 +108,19 @@ def web_search(query: str, max_results=10) -> str:
         for res in raw_results:
             link = res.get('href', '').lower()
             
+            # Exclui domínios bloqueados imediatamente
             if any(bad in link for bad in DOMINIOS_BLOQUEADOS):
                 continue
             
+            # Prioriza domínios confiáveis
             if any(good in link for good in DOMINIOS_CONFIAVEIS):
                 resultados_filtrados.append(res)
 
             if len(resultados_filtrados) >= max_results:
                 break
 
+        # Se nenhum resultado confiável, relaxa filtro e adiciona primeiras
+        # páginas não bloqueadas (fallback reduzido)
         if not resultados_filtrados:
             for res in raw_results[:2]:
                 if not any(bad in res.get('href', '') for bad in DOMINIOS_BLOQUEADOS):
