@@ -22,6 +22,8 @@ class Settings(BaseSettings):
         - valores podem vir de variáveis de ambiente ou do arquivo `.env`.
     """
     databricks_url: str
+    use_semantic_chunking: bool = True
+    max_concurrent_ingestions: int = 1
     databricks_token: str
     max_tokens: Optional[int] = None
     debug: bool = True

@@ -3,23 +3,32 @@
 Este módulo fornece rotas FastAPI para gerenciar documentos no sistema RAG,
 incluindo upload de PDFs, listagem de documentos ingeridos e remoção de
 documentos do vectorstore.
+
+Todos os documentos são processados usando chunking semântico para melhor
+qualidade de recuperação em buscas.
 """
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.services.rag_service import (
-    ingest_pdf, listar_documentos, deletar_documento, UPLOAD_DIR
+    ingest_pdf_semantic,
+    listar_documentos, 
+    deletar_documento, 
+    UPLOAD_DIR
 )
 import shutil
+import logging
 
 router = APIRouter(prefix="/rag", tags=["rag"])
 
+logger = logging.getLogger(__name__)
+
 @router.post("/ingest")
 async def ingest_document(file: UploadFile = File(...)):
-    """Recebe um PDF via upload, persiste localmente e ingere no RAG.
+    """Recebe um PDF via upload e ingere usando chunking semântico.
     
-    Processa o arquivo PDF enviado, divide em chunks e armazena no vectorstore
-    para consultas posteriores via busca semântica. O arquivo original é mantido
-    no diretório de uploads.
+    Processa o arquivo PDF enviado, divide em chunks semânticos baseados em
+    mudanças de contexto e armazena no vectorstore para consultas posteriores.
+    O arquivo original é mantido no diretório de uploads.
 
     Args:
         file: Arquivo PDF enviado pelo cliente via multipart/form-data.
@@ -31,6 +40,8 @@ async def ingest_document(file: UploadFile = File(...)):
             - file (str): Nome do arquivo processado
             - chunks (int): Número de chunks criados
             - pages (int): Número de páginas processadas
+            - avg_chunk_size (int): Tamanho médio dos chunks em caracteres
+            - method (str): Sempre "semantic"
 
     Raises:
         HTTPException: 
@@ -40,31 +51,41 @@ async def ingest_document(file: UploadFile = File(...)):
     Example:
         >>> # POST /v1/rag/ingest
         >>> # Content-Type: multipart/form-data
-        >>> # file: manual_medico.pdf
+        >>> # file: protocolo_sepse.pdf
         >>> {
         ...     "status": "ok",
-        ...     "message": "'manual_medico.pdf' processado com sucesso",
-        ...     "file": "manual_medico.pdf",
-        ...     "chunks": 42,
-        ...     "pages": 15
+        ...     "message": "'protocolo_sepse.pdf' processado com sucesso",
+        ...     "file": "protocolo_sepse.pdf",
+        ...     "chunks": 28,
+        ...     "pages": 12,
+        ...     "avg_chunk_size": 1543,
+        ...     "method": "semantic"
         ... }
     """
     if not file.filename or not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Apenas PDFs são suportados")
 
     file_path = UPLOAD_DIR / file.filename
-    with open(file_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-
+    
     try:
-        # Processa o PDF e injeta no vectorstore via `ingest_pdf`.
-        result = ingest_pdf(str(file_path))
+        # Salva o arquivo
+        with open(file_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+        
+        logger.info("Arquivo salvo: %s", file_path)
+        
+        # Processa com semantic chunking
+        result = ingest_pdf_semantic(str(file_path))
+        
+        logger.info("Processamento concluído: %s", result)
+        
         return {
             "status": "ok",
             "message": f"'{file.filename}' processado com sucesso",
             **result
         }
     except Exception as e:
+        logger.exception("Erro ao processar '%s'", file.filename)
         raise HTTPException(status_code=500, detail=f"Erro ao processar: {str(e)}")
 
 
@@ -83,8 +104,8 @@ async def list_documents():
         >>> # GET /v1/rag/documents
         >>> {
         ...     "documents": [
-        ...         "manual_medico.pdf",
-        ...         "protocolo_2024.pdf"
+        ...         "protocolo_sepse.pdf",
+        ...         "manual_emergencia.pdf"
         ...     ]
         ... }
     """
@@ -111,10 +132,10 @@ async def delete_document(file_name: str):
         HTTPException: 404 se o documento não for encontrado no vectorstore.
     
     Example:
-        >>> # DELETE /v1/rag/documents/manual_medico.pdf
+        >>> # DELETE /v1/rag/documents/protocolo_sepse.pdf
         >>> {
         ...     "status": "ok",
-        ...     "message": "'manual_medico.pdf' removido"
+        ...     "message": "'protocolo_sepse.pdf' removido"
         ... }
     """
     if deletar_documento(file_name):

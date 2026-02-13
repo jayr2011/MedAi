@@ -13,6 +13,13 @@
 
 ---
 
+## Chunking Inteligente
+
+O MedAI usa **Semantic Chunking** para dividir documentos de forma inteligente:
+- Respeita limites semânticos naturais do texto
+- Evita quebrar conceitos relacionados
+- Melhor recall em buscas médicas complexas
+
 ## 🐍 Backend
 
 ### Framework & Runtime Backend

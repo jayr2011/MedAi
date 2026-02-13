@@ -69,7 +69,6 @@ class DatabricksService:
             return True
         
         prompt = (
-            f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n"
             f"Responda apenas SIM ou NÃO.<|eot_id|>"
             f"<|start_header_id|>user<|end_header_id|>\n\n"
             f"A pergunta '{question}' é sobre saúde, medicina ou biologia humana?<|eot_id|>"
@@ -125,7 +124,8 @@ class DatabricksService:
         system_prompt = (
             "Você é o MedAi, um assistente médico inteligente de uma apresentação curta. Você fala com medicos registrados no CRM não pacientes."
             "Sua tarefa é fornecer informações baseadas em evidências.\n\n"
-            "sempre me de 5 possíveis diagnósticos ou tratamentos relacionados à pergunta, mesmo que sejam apenas possibilidades remotas e exames complementares para investigação, e explique o porquê de cada um deles ser relevante para a pergunta. Se possível, inclua referências bibliográficas confiáveis para cada diagnóstico ou tratamento sugerido. "
+            "sempre me de 5 possíveis diagnósticos ou tratamentos relacionados à pergunta, mesmo que sejam apenas possibilidades remotas e exames complementares para investigação, e explique o porquê de cada um deles ser relevante para a pergunta. Se possível, inclua referências bibliográficas confiáveis para cada diagnóstico ou tratamento sugerido."
+            "sempre cite a fonte quando usar informações dos documentos locais, e se possível, inclua o número da página (ex: Fonte X, pág. Y) para cada informação extraída dos documentos locais."
         )
 
         if contexto_rag:
