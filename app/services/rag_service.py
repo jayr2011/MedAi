@@ -32,6 +32,7 @@ from langchain_experimental.text_splitter import SemanticChunker
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from pathlib import Path
+import shutil
 import logging
 import os
 
@@ -196,6 +197,9 @@ def ingest_pdf_semantic(file_path: str) -> dict:
     """
     global _vectorstore
 
+    uploads_path = "./uploads"
+    """diretorio onde os arquivos PDF carregados são armazenados temporariamente para processamento. Após a ingestão, os arquivos são removidos para economizar espaço."""
+
     logger.info("Iniciando ingestão SEMÂNTICA do PDF %s", file_path)
     
     try:
@@ -260,6 +264,11 @@ def ingest_pdf_semantic(file_path: str) -> dict:
     except Exception as e:
         logger.exception("Erro ao ingerir PDF semanticamente %s: %s", file_path, e)
         raise
+    finally:
+        # Remove o arquivo PDF após processamento para economizar espaço. Se ocorrer erro, o arquivo pode permanecer, mas isso é preferível a perder dados do vectorstore.
+        if os.path.exists(uploads_path):
+            shutil.rmtree(uploads_path)
+            print(f"Pasta {uploads_path} removida com sucesso")
 
 
 def buscar_contexto(pergunta: str, k: int = 5) -> str:

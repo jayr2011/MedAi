@@ -69,19 +69,23 @@ class DatabricksService:
             return True
         
         prompt = (
-            f"Responda apenas SIM ou NÃO.<|eot_id|>"
+            f"Você é um classificador que responde apenas SIM ou NÃO.<|eot_id|>"
             f"<|start_header_id|>user<|end_header_id|>\n\n"
-            f"A pergunta '{question}' é sobre saúde, medicina ou biologia humana?<|eot_id|>"
+            f"A seguinte pergunta ou descrição é sobre saúde, medicina ou biologia humana?\n\n"
+            f"'{question}'\n\n"
+            f"Responda apenas: SIM ou NÃO<|eot_id|>"
             f"<|start_header_id|>assistant<|end_header_id|>\n\n"
         )
 
         try:
             # Executa o modelo guardrail e interpreta resposta 'SIM'/'NÃO'.
-            output = self.guardrail_llm(prompt, max_tokens=5, stop=["<|eot_id|>"], temperature=0.0)
+            output = self.guardrail_llm(prompt, max_tokens=10, stop=["<|eot_id|>"], temperature=0.2)
             resposta = output["choices"][0]["text"].strip().upper()
 
-            is_medical = resposta == "SIM"
+            is_medical = "SIM" in resposta or "YES" in resposta
+
             logger.info(f"Guardrail: '{question}' -> {resposta} (Médica: {is_medical})")
+
             return is_medical
         except Exception as e:
             logger.error(f"Erro ao classificar a pergunta com Guardrail Llama-3: {e}")
