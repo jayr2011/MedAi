@@ -1,11 +1,27 @@
-"""Serviços de busca web e roteamento semântico.
+"""Serviços de busca web e roteamento semântico para consultas médicas.
 
-Fornece duas responsabilidades principais:
-- decidir semanticamente quando realizar busca web (`deve_pesquisar_web`);
-- executar buscas no DuckDuckGo com filtros e formatação (`web_search`).
+Este módulo fornece funcionalidades para:
+- Decidir semanticamente quando realizar busca web via embeddings
+- Executar buscas no DuckDuckGo com filtros de domínios confiáveis
+- Formatar resultados priorizando fontes médicas verificadas
 
-O módulo utiliza embeddings para comparar a query com exemplos médicos e
-DDGS para obter resultados do mecanismo de busca.
+O roteamento semântico usa cosine similarity entre a query do usuário e
+exemplos médicos pré-definidos para determinar se busca externa é necessária.
+
+Attributes:
+    SCORE_ALERT_BAND: Margem de alerta para scores próximos ao threshold.
+    MIN_FALLBACK_LENGTH: Tamanho mínimo de resposta para fallback.
+    DOMINIOS_CONFIAVEIS: Lista de domínios médicos priorizados nas buscas.
+    DOMINIOS_BLOQUEADOS: Lista de domínios excluídos dos resultados.
+    EXEMPLOS_BUSCA: Exemplos de consultas que requerem busca web.
+
+Example:
+    Uso típico do serviço de busca:
+    
+    >>> # Verificar se deve buscar
+    >>> if deve_pesquisar_web("protocolos de sepse 2024"):
+    ...     resultados = web_search("protocolos sepse", max_results=5)
+    ...     print(resultados)
 """
 
 import logging
@@ -18,13 +34,17 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 SCORE_ALERT_BAND = settings.score_alert_band
+"""float: Margem de alerta para scores próximos ao threshold de roteamento."""
+
 MIN_FALLBACK_LENGTH = settings.min_fallback_length
+"""int: Comprimento mínimo de resposta antes de acionar fallback."""
 
 DOMINIOS_CONFIAVEIS = [
     ".gov.br", ".org.br", ".edu.br", "scielo.br", "pubmed.ncbi",
     "who.int", "paho.org", "msdmanuals.com", "einstein.br",
     "siriolibanes.br", "fleury.com.br", "pebmed.com.br", "medscape.com"
 ]
+"""list[str]: Domínios médicos confiáveis priorizados nos resultados de busca."""
 
 DOMINIOS_BLOQUEADOS = [
     "facebook.com", "instagram.com", "twitter.com", "tiktok.com",
@@ -32,6 +52,7 @@ DOMINIOS_BLOQUEADOS = [
     "reclameaqui.com.br", "mercadolivre.com.br", "shopee.com.br",
     "wikipedia.org"
 ]
+"""list[str]: Domínios excluídos dos resultados por não serem fontes médicas confiáveis."""
 
 EXEMPLOS_BUSCA = [
     "protocolos e diretrizes clínicas atualizados",
@@ -42,29 +63,49 @@ EXEMPLOS_BUSCA = [
     "interações medicamentosas e ajustes de dose",
     "escores de risco e critérios de triagem"
 ]
+"""list[str]: Exemplos de consultas médicas que tipicamente requerem busca web."""
 
 _embeddings_cache = None
 
 def deve_pesquisar_web(query: str, threshold: float | None = None) -> bool:
-    """Decide se uma consulta deve acionar busca web externa.
-
-    A decisão é baseada em similaridade semântica entre a `query` e um conjunto
-    de exemplos médicos (`EXEMPLOS_BUSCA`). Usa embeddings para calcular a
-    similaridade e compara a similaridade máxima com `threshold`.
+    """Decide se uma consulta deve acionar busca web via similaridade semântica.
+    
+    Calcula embeddings da query e compara com exemplos médicos usando cosine
+    similarity. Se a similaridade máxima exceder o threshold, retorna True
+    indicando que busca web é recomendada.
+    
+    Os embeddings dos exemplos são cacheados globalmente após o primeiro cálculo
+    para otimizar performance em consultas subsequentes.
 
     Args:
-        query (str): texto da pergunta do usuário.
-        threshold (float | None): limiar opcional para tomada de decisão. Se
-            None, `settings.router_threshold` é utilizado.
+        query: Texto da pergunta do usuário para análise.
+        threshold: Limiar de decisão para busca web. Se None, usa
+            `settings.router_threshold` como padrão.
 
     Returns:
-        bool: True quando a similaridade máxima >= limiar; False em caso de
-            erro ou quando abaixo do limiar.
+        True se a similaridade máxima for maior ou igual ao threshold,
+        indicando que busca web deve ser realizada. False em caso de erro
+        durante processamento ou se a similaridade estiver abaixo do limiar.
+
+    Note:
+        O cache de embeddings (_embeddings_cache) é mantido em memória para
+        toda a vida útil do processo. Em caso de erro, retorna False por
+        segurança (fail-safe).
+
+    Example:
+        >>> if deve_pesquisar_web("protocolos de sepse atualizados"):
+        ...     print("Realizando busca web...")
+        Realizando busca web...
+        
+        >>> if deve_pesquisar_web("olá, como vai?"):
+        ...     print("Busca não necessária")
+        Busca não necessária
     """
     global _embeddings_cache
     try:
-        # Recupera/gera embeddings dos exemplos (cache in-process)
         model = get_embeddings()
+
+        # Gera e cacheia embeddings dos exemplos na primeira execução
         if _embeddings_cache is None:
             docs_emb = model.embed_documents(EXEMPLOS_BUSCA)
             _embeddings_cache = np.array(docs_emb)
@@ -82,22 +123,48 @@ def deve_pesquisar_web(query: str, threshold: float | None = None) -> bool:
         return False
 
 def web_search(query: str, max_results=10) -> str:
-    """Executa busca no DuckDuckGo e retorna contexto filtrado e formatado.
-
-    A função prioriza domínios confiáveis médicos e exclui domínios listados em
-    `DOMINIOS_BLOQUEADOS`. Se nenhum resultado confiável for encontrado, uma
-    pequena amostra de resultados não bloqueados pode ser retornada.
+    """Executa busca no DuckDuckGo e retorna contexto filtrado de fontes confiáveis.
+    
+    Realiza busca web priorizando domínios médicos confiáveis e excluindo
+    domínios inadequados (redes sociais, e-commerce, etc.). Os resultados são
+    formatados com título, URL e resumo.
+    
+    Se nenhum resultado confiável for encontrado, inclui até 2 resultados não
+    bloqueados como fallback para evitar respostas vazias.
 
     Args:
-        query (str): texto da pesquisa.
-        max_results (int): número máximo de resultados a considerar.
+        query: Texto da consulta para busca web.
+        max_results: Número máximo de resultados a considerar. Padrão é 10.
 
     Returns:
-        str: contexto formatado com título, URL e resumo; string vazia em caso
-            de erro ou ausência de resultados.
+        String formatada contendo resultados filtrados, cada um com:
+            - Fonte (título)
+            - URL completa
+            - Resumo do conteúdo
+        
+        Retorna string vazia se não houver resultados ou em caso de erro.
+
+    Note:
+        A busca usa o backend Brave do DuckDuckGo. Domínios confiáveis são
+        priorizados primeiro. Se nenhum for encontrado, até 2 resultados não
+        bloqueados são incluídos como fallback.
+        
+        Verificação SSL é desabilitada (verify=False) para evitar problemas
+        com certificados em alguns ambientes.
+
+    Example:
+        >>> contexto = web_search("protocolo sepse 2024", max_results=3)
+        >>> print(contexto)
+        - Fonte: Protocolo de Sepse - Ministério da Saúde
+          URL: https://saude.gov.br/protocolos/sepse
+          Resumo: Diretrizes atualizadas para manejo de sepse...
+        
+        - Fonte: Sepse: Diagnóstico e Tratamento - SciELO
+          URL: https://scielo.br/artigo-sepse
+          Resumo: Revisão sistemática sobre diagnóstico...
     """
     try:
-        logger.info(f"🔎 Iniciando busca web para: {query}")
+        logger.info("🔎 Iniciando busca web para: %s", query)
         with DDGS(verify=False) as ddgs:
             raw_results = list(ddgs.text(query, max_results=max_results, backend="brave"))
         
@@ -119,8 +186,7 @@ def web_search(query: str, max_results=10) -> str:
             if len(resultados_filtrados) >= max_results:
                 break
 
-        # Se nenhum resultado confiável, relaxa filtro e adiciona primeiras
-        # páginas não bloqueadas (fallback reduzido)
+        # Fallback: se nenhum confiável, adiciona até 2 resultados não bloqueados
         if not resultados_filtrados:
             for res in raw_results[:2]:
                 if not any(bad in res.get('href', '') for bad in DOMINIOS_BLOQUEADOS):

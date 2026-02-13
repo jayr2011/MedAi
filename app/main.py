@@ -30,12 +30,26 @@ app.include_router(rag.router, prefix="/v1")
 
 @app.get("/health")
 async def health():
-    """Health check endpoint.
+    """Verifica o status e configuração da aplicação.
+
+    Endpoint de health check que retorna informações básicas sobre o serviço,
+    incluindo status operacional, configuração do Databricks e parâmetros
+    de geração de texto.
 
     Returns:
-        dict: informações básicas sobre o serviço e configurações relevantes
-            (ex.: `databricks_url` truncada e `max_tokens`).
-    """
+        Dicionário contendo:
+            - status (str): Sempre "OK" quando o serviço está operacional
+            - databricks_url (str): URL truncada do endpoint Databricks (primeiros 50 caracteres)
+            - max_tokens (int): Limite máximo de tokens configurado para geração
+
+    Example:
+        >>> # GET /health
+        >>> {
+        ...     "status": "OK",
+        ...     "databricks_url": "https://adb-1234567890123456.7.azuredatabricks.net...",
+        ...     "max_tokens": 512
+        ... }
+    """ 
     return {
         "status": "OK",
         "databricks_url": settings.databricks_url[:50] + "...",
