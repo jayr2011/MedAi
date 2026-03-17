@@ -1,4 +1,6 @@
 import logging
+import asyncio
+import time
 from typing import AsyncGenerator, List
 
 from llama_cpp import Llama
@@ -9,6 +11,12 @@ from app.services.rag_service import buscar_contexto
 from app.services.web_search_service import web_search, deve_pesquisar_web
 
 logger = logging.getLogger(__name__)
+
+MEDICAL_HINTS = (
+    "dor", "febre", "sintoma", "diagnost", "tratament", "exame", "medic",
+    "pressao", "glic", "insulina", "diabetes", "cancer", "oncolog", "cefale",
+    "dispne", "asma", "covid", "infec", "cardio", "renal", "hepatic", "neuro",
+)
 
 
 class LlmService:
@@ -22,47 +30,63 @@ class LlmService:
                 n_threads=settings.llm_threads,
                 verbose=False,
             )
-            logger.info("Modelo de chat BioMistral carregado com sucesso.")
+            logger.info("Modelo local carregado com sucesso: %s/%s", settings.llm_repo_id, settings.llm_filename)
         except Exception as e:
-            logger.error(f"Erro ao carregar modelo de chat BioMistral: {e}")
+            logger.error("Erro ao carregar modelo local: %s", e)
             self.chat_llm = None
 
-        self.guardrail_llm = None
-        try:
-            self.guardrail_llm = Llama.from_pretrained(
-                repo_id="bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
-                filename="Meta-Llama-3.1-8B-Instruct-IQ2_M.gguf",
-                n_ctx=1024,
-                n_threads=4,
-                verbose=False
-            )
-            logger.info("Guardrail Llama-3 carregado com sucesso na CPU.")
-        except Exception as e:
-            logger.error(f"Erro ao carregar o modelo Guardrail Llama-3: {e}")
-            self.guardrail_llm = None
+    def _eh_obviamente_medica(self, question: str) -> bool:
+        q = question.lower()
+        return any(hint in q for hint in MEDICAL_HINTS)
+
+    async def _coletar_contextos(self, question: str) -> tuple[str, str]:
+        async def rag_task() -> str:
+            try:
+                return await asyncio.to_thread(buscar_contexto, question)
+            except Exception as e:
+                logger.error("Erro ao buscar contexto RAG: %s", e)
+                return ""
+
+        async def web_task() -> str:
+            try:
+                should_search = await asyncio.to_thread(deve_pesquisar_web, question)
+                if should_search:
+                    logger.info("Roteador decidiu buscar na web para: %s", question)
+                    return await asyncio.to_thread(web_search, question, 5)
+            except Exception as e:
+                logger.error("Erro na busca web: %s", e)
+            return ""
+
+        return await asyncio.gather(rag_task(), web_task())
 
     async def is_pergunta_medica(self, question: str) -> bool:
-        if not self.guardrail_llm:
-            logger.warning("Guardrail indisponível, assumindo que a pergunta é médica.")
+        if self._eh_obviamente_medica(question):
             return True
 
-        prompt = (
-            f"Você é um classificador que responde apenas SIM ou NÃO.<|eot_id|>"
-            f"<|start_header_id|>user<|end_header_id|>\n\n"
-            f"A seguinte pergunta ou descrição é sobre saúde, medicina ou biologia humana?\n\n"
-            f"'{question}'\n\n"
-            f"Responda apenas: SIM ou NÃO<|eot_id|>"
-            f"<|start_header_id|>assistant<|end_header_id|>\n\n"
-        )
+        if not self.chat_llm:
+            logger.warning("Modelo local indisponível, assumindo que a pergunta é médica.")
+            return True
 
         try:
-            output = self.guardrail_llm(
-                prompt,
-                max_tokens=10,
-                stop=["<|eot_id|>"],
-                temperature=0.2
+            messages = [
+                {
+                    "role": "system",
+                    "content": "Você é um classificador que responde apenas SIM ou NÃO.",
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "A seguinte pergunta ou descrição é sobre saúde, medicina "
+                        f"ou biologia humana?\n\n'{question}'\n\nResponda apenas: SIM ou NÃO"
+                    ),
+                },
+            ]
+            output = self.chat_llm.create_chat_completion(
+                messages=messages,
+                max_tokens=8,
+                temperature=0.0,
             )
-            resposta = output["choices"][0]["text"].strip().upper()
+            resposta = output["choices"][0].get("message", {}).get("content", "").strip().upper()
             return "SIM" in resposta or "YES" in resposta
         except Exception as e:
             logger.error(f"Erro ao classificar pergunta: {e}")
@@ -73,24 +97,13 @@ class LlmService:
         question: str,
         history: List[ChatMessage]
     ) -> AsyncGenerator[str, None]:
+        started_at = time.perf_counter()
+
         if not await self.is_pergunta_medica(question):
             yield "Peço desculpa, mas como MedAi, só posso responder a questões relacionadas com saúde e medicina."
             return
 
-        contexto_rag = ""
-        contexto_web = ""
-
-        try:
-            contexto_rag = buscar_contexto(question)
-        except Exception as e:
-            logger.error(f"Erro ao buscar contexto RAG: {e}")
-
-        try:
-            if deve_pesquisar_web(question):
-                logger.info(f"Roteador decidiu buscar na web para: {question}")
-                contexto_web = web_search(question)
-        except Exception as e:
-            logger.error(f"Erro na busca web: {e}")
+        contexto_rag, contexto_web = await self._coletar_contextos(question)
 
         system_prompt = (
             "Você é o MedAi, um assistente médico inteligente. "
@@ -126,7 +139,6 @@ class LlmService:
             if not self.chat_llm:
                 raise ValueError("Modelo local de chat indisponível.")
 
-            # Streaming local via llama_cpp com interface de chat compatível.
             stream = self.chat_llm.create_chat_completion(
                 messages=messages,
                 max_tokens=settings.max_tokens or 1024,
@@ -134,6 +146,7 @@ class LlmService:
                 stream=True,
             )
 
+            first_token_logged = False
             for chunk in stream:
                 choices = chunk.get("choices", []) if isinstance(chunk, dict) else []
                 if not choices:
@@ -141,11 +154,10 @@ class LlmService:
 
                 delta = choices[0].get("delta", {}) or {}
                 content = delta.get("content")
-
-                if not content:
-                    content = choices[0].get("text")
-
                 if content:
+                    if not first_token_logged:
+                        logger.info("Tempo até 1o token: %.2fs", time.perf_counter() - started_at)
+                        first_token_logged = True
                     yield content
 
         except Exception as e:
