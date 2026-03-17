@@ -52,7 +52,7 @@ async def health():
     """ 
     return {
         "status": "OK",
-        "llm_base_url": settings.llm_base_url[:50] + "...",
+        "llm_model": settings.llm_model,
         "max_tokens": settings.max_tokens
     }
 

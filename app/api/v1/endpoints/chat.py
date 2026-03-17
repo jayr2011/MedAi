@@ -87,14 +87,23 @@ async def chat_stream(
 
         async def generate():
             """Gera eventos SSE a partir dos chunks do serviço.
-            
+
             Yields:
                 Strings formatadas como eventos SSE contendo chunks JSON
                 da resposta do modelo.
             """
-            async for chunk in service.chat_stream(ultima_msg, historico):
-                payload = json.dumps({"choices": [{"delta": {"content": chunk}}]})
-                yield f"data: {payload}\n\n"
+            try:
+                async for chunk in service.chat_stream(ultima_msg, historico):
+                    payload = json.dumps({"choices": [{"delta": {"content": chunk}}]})
+                    yield f"data: {payload}\n\n"
+            except Exception:
+                logger.exception("Erro durante o streaming SSE")
+                error_payload = json.dumps(
+                    {"error": {"message": "Falha durante a geração da resposta."}}
+                )
+                yield f"data: {error_payload}\n\n"
+            finally:
+                yield "data: [DONE]\n\n"
 
         return StreamingResponse(
             generate(),
