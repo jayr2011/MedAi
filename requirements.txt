@@ -17,3 +17,5 @@ huggingface-hub
 pytest
 pytest-asyncio
 pytest-cov
+langchain-experimental
+secure

@@ -54,6 +54,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import type { Message } from '@/types/chat'
 
 const props = defineProps<{
@@ -65,7 +66,8 @@ const isUser = computed(() => props.message.role === 'user')
 
 const formattedContent = computed(() => {
   if (!props.message.content) return ''
-  return marked.parse(props.message.content, { breaks: true })
+  const parsed = marked.parse(props.message.content, { breaks: true })
+  return DOMPurify.sanitize(parsed as string)
 })
 
 const formattedTime = computed(() =>

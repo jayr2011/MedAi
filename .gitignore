@@ -11,6 +11,9 @@ build/
 chroma_db/
 uploads/
 
+#agents
+.agents/
+
 # Vue / Frontend
 frontend/node_modules/
 frontend/dist/

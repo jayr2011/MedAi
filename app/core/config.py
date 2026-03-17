@@ -12,8 +12,9 @@ class Settings(BaseSettings):
     """Configurações da aplicação carregadas automaticamente.
 
     Campos importantes:
-        databricks_url (str): URL do endpoint Databricks.
-        databricks_token (str): token de autenticação para Databricks.
+        llm_base_url (str): URL base do provedor OpenAI-compatible.
+        llm_api_key (str): token/chave de autenticação do provedor LLM.
+        llm_model (str): identificador do modelo/rota usado no chat.
         max_tokens (Optional[int]): número máximo de tokens para geração.
         debug (bool): ativa modo de debug (afeta verificação TLS no cliente HTTP).
         huggingface_token (Optional[str]): token para HF (quando usado).
@@ -21,10 +22,14 @@ class Settings(BaseSettings):
     Configuração de carregamento:
         - valores podem vir de variáveis de ambiente ou do arquivo `.env`.
     """
-    databricks_url: str
+    llm_base_url: str
     use_semantic_chunking: bool = True
     max_concurrent_ingestions: int = 1
-    databricks_token: str
+    llm_api_key: str
+    llm_model: str = "meta-llama-3-3-70b-instruct"
+    llm_repo_id: str = "MaziyarPanahi/BioMistral-Clinical-7B-GGUF"
+    llm_filename: str = "BioMistral-Clinical-7B.Q5_K_M.gguf"
+    llm_threads: int = 4
     max_tokens: Optional[int] = None
     debug: bool = True
     huggingface_token: Optional[str] = None

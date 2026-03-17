@@ -7,11 +7,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    vue(),
-    vueDevTools(),
-    tailwindcss(),
-  ],
+  plugins: [vue(), vueDevTools(), tailwindcss()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -22,7 +18,15 @@ export default defineConfig({
       '/v1': {
         target: 'http://localhost:8000',
         changeOrigin: true,
-      }
-    }
-  }
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            const apiKey = req.headers['x-api-key']
+            if (apiKey) {
+              proxyReq.setHeader('x-api-key', apiKey)
+            }
+          })
+        },
+      },
+    },
+  },
 })

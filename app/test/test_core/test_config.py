@@ -6,13 +6,13 @@ import pytest
 def test_settings_default_values():
     """Testa se os valores padrão estão corretos quando o ambiente está vazio."""
     mock_env = {
-        "DATABRICKS_URL": "http://mock.ai",
-        "DATABRICKS_TOKEN": "dapi_mock_123",
+        "LLM_BASE_URL": "http://mock.ai",
+        "LLM_API_KEY": "llm_mock_123",
     }
     with patch.dict("os.environ", mock_env, clear=True):
         s = Settings(_env_file=None)
-        assert s.databricks_url == "http://mock.ai"
-        assert s.databricks_token == "dapi_mock_123"
+        assert s.llm_base_url == "http://mock.ai"
+        assert s.llm_api_key == "llm_mock_123"
         assert s.max_tokens is None
         assert s.debug is True
         assert s.huggingface_token is None
@@ -20,15 +20,17 @@ def test_settings_default_values():
 def test_settings_env_override():
     """Testa se a variável de ambiente sobrescreve o valor padrão."""
     mock_env = {
-        "DATABRICKS_URL": "https://test.databricks.com",
-        "DATABRICKS_TOKEN": "dapi_test_456",
+        "LLM_BASE_URL": "https://test-llm-provider.com/v1",
+        "LLM_API_KEY": "llm_test_456",
+        "LLM_MODEL": "meta-llama-3-3-70b-instruct",
         "MAX_TOKENS": "1000",
         "HUGGINGFACE_TOKEN": "hf_test_789"
     }
     with patch.dict("os.environ", mock_env, clear=True):
         s = Settings()
-        assert s.databricks_url == "https://test.databricks.com"
-        assert s.databricks_token == "dapi_test_456"
+        assert s.llm_base_url == "https://test-llm-provider.com/v1"
+        assert s.llm_api_key == "llm_test_456"
+        assert s.llm_model == "meta-llama-3-3-70b-instruct"
         assert s.max_tokens == 1000
         assert s.huggingface_token == "hf_test_789"
 

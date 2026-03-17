@@ -50,7 +50,7 @@ O MedAI usa **Semantic Chunking** para dividir documentos de forma inteligente:
 
 ### Integração Externa
 
-- **Databricks** - Hospeda o modelo Gemma via API
+- **Provedor LLM OpenAI-compatible** - Hospeda o modelo Gemma via API
 
 ### Estrutura do Backend
 
@@ -64,7 +64,7 @@ app/
 ├── core/
 │   └── config.py         # Configurações centralizadas
 └── services/
-  ├── databricks_service.py  # Cliente do modelo
+  ├── llm_service.py         # Cliente do modelo
   ├── rag_service.py         # RAG com PDFs e ChromaDB
   └── web_search_service.py  # Busca web e roteamento semântico
 ```
@@ -152,7 +152,7 @@ frontend/src/
 
 - **CORS:** Habilitado para todas as origens
 - **Streaming:** Suporte a SSE (Server-Sent Events)
-- **SSL:** Verificação desabilitada para Databricks (dev)
+- **SSL:** Verificação configurável para provedor LLM (dev/prod)
 - **Rate Limiting:** Implementado via SlowAPI
 - **Guardrail local:** Classificação de escopo com Llama 3.1 (CPU)
 - **RAG:** Ingestão e busca de documentos PDF via ChromaDB
@@ -227,8 +227,9 @@ docker run -p 8000:8000 --env-file .env media
 ## 🔐 Variáveis de Ambiente
 
 ```bash
-DATABRICKS_URL=<url-do-endpoint>
-DATABRICKS_TOKEN=<token-de-acesso>
+LLM_BASE_URL=<url-base-openai-compatible>
+LLM_API_KEY=<token-ou-chave-de-acesso>
+LLM_MODEL=<id-do-modelo-ou-rota>
 HUGGINGFACE_TOKEN=<token-hf-opcional>
 MAX_TOKENS=1024
 ROUTER_THRESHOLD=0.5

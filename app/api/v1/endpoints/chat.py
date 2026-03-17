@@ -9,8 +9,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from app.api.v1.schemas.chat import ChatRequest
-from app.services.databricks_service import DatabricksService
-from app.api.deps import get_databricks_service
+from app.services.llm_service import LlmService
+from app.api.deps import get_llm_service
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 @router.post("/stream")
 async def chat_stream(
     request: ChatRequest,
-    service: DatabricksService = Depends(get_databricks_service)
+    service: LlmService = Depends(get_llm_service)
 ):
     """Processa mensagens de chat e retorna resposta via streaming SSE.
     
@@ -32,7 +32,7 @@ async def chat_stream(
 
     Args:
         request: Objeto contendo o histórico de mensagens do chat.
-        service: Instância do serviço Databricks injetada via dependency
+        service: Instância do serviço LLM injetada via dependency
             injection para processar e gerar respostas.
 
     Returns:

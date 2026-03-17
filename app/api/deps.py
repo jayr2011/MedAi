@@ -4,15 +4,15 @@ Este módulo expõe factories/dependencies usadas pelo FastAPI. A instância
 `_service` é um singleton criado no import e reutilizada pela dependência.
 """
 
-from app.services.databricks_service import DatabricksService
+from app.services.llm_service import LlmService
 
-_service = DatabricksService()
+_service = LlmService()
 
 
-def get_databricks_service() -> DatabricksService:
-    """Retorna a instância singleton de `DatabricksService` para injeção.
+def get_llm_service() -> LlmService:
+    """Retorna a instância singleton de `LlmService` para injeção.
 
     Returns:
-        DatabricksService: instância reutilizável do serviço Databricks.
+        LlmService: instância reutilizável do serviço de chat.
     """
     return _service
