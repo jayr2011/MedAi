@@ -11,6 +11,9 @@ build/
 chroma_db/
 uploads/
 
+# Windsurf
+/.windsurf
+
 #agents
 .agents/
 

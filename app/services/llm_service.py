@@ -9,11 +9,7 @@ from app.core.config import settings
 from app.services.rag_service import buscar_contexto
 
 logger = logging.getLogger(__name__)
-MEDICAL_HINTS = (
-    "dor", "febre", "sintoma", "diagnost", "tratament", "exame", "medic",
-    "pressao", "glic", "insulina", "diabetes", "cancer", "oncolog", "cefale",
-    "dispne", "asma", "covid", "infec", "cardio", "renal", "hepatic", "neuro",
-)
+
 
 class LlmService:
     def __init__(self) -> None:
@@ -22,9 +18,9 @@ class LlmService:
             self.model_name = settings.llm_model
             logger.info("Gemini Client inicializado com sucesso.")
         except Exception as e:
-            logger.error("Erro ao inicializar Gemini Client: %s", e)
+            logger.error("Erro ao inicializar Gemini Client")
             self.client = None
-            self.model_name = "gemini-2.5-flash-lite"
+            self.model_name = settings.llm_model or "gemini-2.5-flash-lite"
 
     async def _coletar_contextos(self, question: str) -> tuple[str, str]:
         """Coleta contexto local do RAG.
@@ -82,7 +78,12 @@ class LlmService:
         formatted_history = []
         
         for msg in history:
-            role = "user" if msg.role == "user" else "model"
+            if msg.role == "user":
+                role = "user"
+            elif msg.role == "model" or msg.role == "assistant":
+                role = "model"
+            else:
+                role = "user"
             formatted_history.append(
                 types.Content(role=role, parts=[types.Part.from_text(text=msg.content)])
             )
@@ -108,7 +109,8 @@ class LlmService:
             response_stream = self.client.models.generate_content_stream(
                 model=self.model_name,
                 contents=formatted_history,
-                config=config
+                config=config,
+                request_options={"timeout": 60}
             )
 
             for chunk in response_stream:

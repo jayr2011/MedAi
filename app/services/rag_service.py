@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from pathlib import Path
 
 from google import genai
@@ -21,6 +22,7 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 _embeddings = None
 _vectorstore = None
+_lock = threading.Lock()
 
 
 class GeminiEmbeddingsAdapter:
@@ -59,23 +61,27 @@ class GeminiEmbeddingsAdapter:
 def get_embeddings() -> GeminiEmbeddingsAdapter:
     global _embeddings
     if _embeddings is None:
-        _embeddings = GeminiEmbeddingsAdapter()
-        logger.info("Embeddings inicializados com %s", _embeddings.model_name)
+        with _lock:
+            if _embeddings is None:
+                _embeddings = GeminiEmbeddingsAdapter()
+                logger.info("Embeddings inicializados com %s", _embeddings.model_name)
     return _embeddings
 
 
 def get_vectorstore() -> Chroma | None:
     global _vectorstore
     if _vectorstore is None and CHROMA_DIR.exists():
-        try:
-            _vectorstore = Chroma(
-                persist_directory=str(CHROMA_DIR),
-                embedding_function=get_embeddings(),
-            )
-            logger.info("Chroma inicializado em %s", CHROMA_DIR)
-        except Exception:
-            logger.exception("Erro ao inicializar Chroma")
-            _vectorstore = None
+        with _lock:
+            if _vectorstore is None:
+                try:
+                    _vectorstore = Chroma(
+                        persist_directory=str(CHROMA_DIR),
+                        embedding_function=get_embeddings(),
+                    )
+                    logger.info("Chroma inicializado em %s", CHROMA_DIR)
+                except Exception:
+                    logger.exception("Erro ao inicializar Chroma")
+                    _vectorstore = None
     return _vectorstore
 
 

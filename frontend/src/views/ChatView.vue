@@ -8,13 +8,16 @@
             alt="MedIA"
             class="h-26 invert brightness-0 dark:invert"
           />
-          <p class="text-xs text-emerald-100 dark:text-gray-400" aria-live="polite" aria-atomic="true">
+          <p
+            class="text-xs text-emerald-100 dark:text-gray-400"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             {{ isLoading ? 'Digitando...' : 'Assistente médico' }}
           </p>
         </div>
 
         <div class="flex items-center gap-2">
-          <!-- Limpar conversa -->
           <button
             @click="handleClear"
             :disabled="messages.length === 0"
@@ -22,15 +25,24 @@
             title="Limpar conversa"
             aria-label="Limpar conversa"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"
+              />
               <line x1="10" y1="11" x2="10" y2="17" />
               <line x1="14" y1="11" x2="14" y2="17" />
             </svg>
           </button>
 
-          <!-- Dark mode -->
           <button
             @click="toggle"
             class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
@@ -57,7 +69,6 @@
         aria-live="polite"
         aria-relevant="additions text"
       >
-        <!-- Welcome -->
         <div
           class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4"
           aria-hidden="true"
@@ -81,20 +92,28 @@
         <button
           v-if="showScrollBtn"
           @click="scrollToBottom"
-          class="sticky bottom-4 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full
-                 bg-emerald-500 text-white shadow-lg flex items-center justify-center
-                 hover:bg-emerald-600 active:scale-95 transition-all"
+          class="sticky bottom-4 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-emerald-500 text-white shadow-lg flex items-center justify-center hover:bg-emerald-600 active:scale-95 transition-all"
           aria-label="Ir para a ultima mensagem"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M12 5v14M5 12l7 7 7-7" />
           </svg>
         </button>
       </Transition>
     </div>
 
-    <div class="shrink-0 bg-white dark:bg-gray-800 px-4 py-4 border-t border-gray-200 dark:border-gray-700">
+    <div
+      class="shrink-0 bg-white dark:bg-gray-800 px-4 py-4 border-t border-gray-200 dark:border-gray-700"
+    >
       <div class="max-w-2xl mx-auto w-full">
         <ChatInput :disabled="isLoading" @send="handleSend" />
       </div>

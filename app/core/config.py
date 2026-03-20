@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     max_concurrent_ingestions: int = 1
     max_tokens: Optional[int] = 1024
     debug: bool = True
+    allowed_origins: list[str] = ["*"]
     
     model_config = SettingsConfigDict(
         env_file=".env",
